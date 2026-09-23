@@ -1,0 +1,1520 @@
+<title>รายรับ-รายจ่าย เขต 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --surface-1:#fcfcfb; --surface-2:#f3f2ee; --page:#f6f5f1;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --rev:#2a78d6; --rev-soft:#e7f0fb; --rev-tint:#dcebfa;
+    --exp:#eb6834; --exp-soft:#fdefe8; --exp-tint:#fbe4d5;
+    --series3:#1baf7a; --series3-soft:#e4f6ef;
+    --good:#0ca30c; --critical:#d03b3b;
+    --accent:#1c5cab;
+    --median-bg:#fff6e0; --median-border:#eda100;
+    --highlight-bg:#eef4fc; --highlight-border:#2a78d6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --surface-1:#1a1a19; --surface-2:#222221; --page:#0d0d0d;
+      --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8d86;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --rev:#3987e5; --rev-soft:#182636; --rev-tint:#1e3350;
+      --exp:#d95926; --exp-soft:#33241c; --exp-tint:#472c1c;
+      --series3:#199e70; --series3-soft:#152e26;
+      --good:#0ca30c; --critical:#e66767;
+      --accent:#3987e5;
+      --median-bg:#332a10; --median-border:#c98500;
+      --highlight-bg:#16273d; --highlight-border:#3987e5;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --surface-1:#1a1a19; --surface-2:#222221; --page:#0d0d0d;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8d86;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+    --rev:#3987e5; --rev-soft:#182636; --rev-tint:#1e3350;
+    --exp:#d95926; --exp-soft:#33241c; --exp-tint:#472c1c;
+    --series3:#199e70; --series3-soft:#152e26;
+    --good:#0ca30c; --critical:#e66767;
+    --accent:#3987e5;
+    --median-bg:#332a10; --median-border:#c98500;
+    --highlight-bg:#16273d; --highlight-border:#3987e5;
+  }
+
+  *{box-sizing:border-box;}
+  [hidden]{display:none!important;}
+  body{
+    background:var(--page); color:var(--text-primary);
+    font-family:'Noto Sans Thai','Noto Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    padding:0 16px 48px; margin:0;
+  }
+  h1,h2,h3{text-wrap:balance; font-family:'Noto Sans Thai','Noto Sans',sans-serif;}
+  .wrap{max-width:1180px; margin:0 auto;}
+
+  header{padding:28px 0 18px;}
+  .eyebrow{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin:0 0 6px;}
+  h1{font-size:25px; font-weight:800; margin:0 0 6px; letter-spacing:-.01em;}
+  .sub{color:var(--text-secondary); font-size:14px; margin:0; line-height:1.6;}
+
+  .panel{
+    background:var(--surface-1); border:1px solid var(--border); border-radius:14px;
+    padding:16px; margin:18px 0 14px; display:flex; flex-direction:column; gap:14px; position:relative; z-index:6;
+  }
+  .row{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:flex-end;}
+  .field{display:flex; flex-direction:column; gap:5px; min-width:0; position:relative;}
+  .field label{font-size:11.5px; font-weight:600; color:var(--text-muted); letter-spacing:.02em;}
+  select{
+    font:inherit; font-size:13.5px; color:var(--text-primary); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:150px;
+    appearance:none; -webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23898781'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; padding-right:26px;
+  }
+  select:focus-visible, .seg button:focus-visible, th button:focus-visible, .tab:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .seg{display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:2px; gap:2px;}
+  .seg button{font:inherit; font-size:13px; font-weight:600; color:var(--text-secondary); background:transparent; border:none; border-radius:6px; padding:7px 12px; cursor:pointer; white-space:nowrap;}
+  .seg button[aria-pressed="true"]{background:var(--surface-1); color:var(--text-primary); box-shadow:0 1px 2px var(--border);}
+  .field.grow{flex:1 1 220px;}
+  .field.w160{width:160px; flex:0 0 160px;}
+
+  /* ---------- manual hospital picker ---------- */
+  details.hosppick{position:relative;}
+  .hosppick summary{font:inherit; font-size:13.5px; color:var(--text-primary); background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:150px;}
+  .hosppick summary::-webkit-details-marker{display:none;}
+  .hosppick summary::after{content:'▾'; color:var(--text-muted); font-size:10px;}
+  .hosppick[open] summary::after{content:'▴';}
+  .hosppick-body{position:absolute; z-index:20; top:calc(100% + 4px); left:0; width:340px; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:10px; box-shadow:0 10px 28px rgba(0,0,0,.18); display:flex; flex-direction:column; gap:8px;}
+  .hosppick-actions{display:flex; gap:8px;}
+  .hosppick-actions button{font:inherit; font-size:12px; font-weight:600; color:var(--accent); background:var(--rev-soft); border:none; border-radius:6px; padding:5px 10px; cursor:pointer;}
+  .hosppick-list{max-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:1px; border-top:1px solid var(--border); padding-top:6px;}
+  .hosppick-list label{display:flex; align-items:center; gap:7px; font-size:12.5px; padding:4px 5px; border-radius:6px; cursor:pointer;}
+  .hosppick-list label:hover{background:var(--surface-2);}
+  .hosppick-list .prov{color:var(--text-muted); font-size:10.5px; margin-left:auto; white-space:nowrap;}
+  .hosppick-list input[type=checkbox]{accent-color:var(--accent); width:14px; height:14px; flex:none;}
+  .hosppick-list label[hidden]{display:none;}
+
+  /* ---------- tab bar ---------- */
+  .tabbar{display:flex; gap:4px; overflow-x:auto; padding-bottom:2px; margin:0 0 16px; border-bottom:1px solid var(--border);}
+  .tab{
+    font:inherit; font-size:13px; font-weight:600; color:var(--text-muted); background:transparent;
+    border:none; padding:10px 14px; cursor:pointer; white-space:nowrap; border-bottom:2.5px solid transparent;
+    margin-bottom:-1px; display:flex; align-items:center; gap:6px;
+  }
+  .tab .n{font-size:10.5px; font-weight:700; color:var(--text-muted); background:var(--surface-2); border-radius:999px; padding:1px 6px;}
+  .tab[aria-selected="true"]{color:var(--text-primary); border-bottom-color:var(--accent);}
+  .tab[aria-selected="true"] .n{color:var(--accent); background:var(--rev-soft);}
+  .tab:hover{color:var(--text-primary);}
+  .tabpanel[hidden]{display:none;}
+
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:0 0 18px;}
+  @media (max-width:720px){ .kpis{grid-template-columns:repeat(2,1fr);} }
+  .tile{background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:4px;}
+  .tile .label{font-size:12px; color:var(--text-muted); font-weight:600;}
+  .tile .value{font-size:21px; font-weight:700; letter-spacing:-.01em;}
+  .tile .value.good{color:var(--good);} .tile .value.critical{color:var(--critical);}
+  .tile .delta{font-size:12px; color:var(--text-secondary);}
+
+  .card{background:var(--surface-1); border:1px solid var(--border); border-radius:14px; padding:18px 18px 20px; margin:0 0 18px;}
+  .card-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:10px 16px; margin-bottom:14px;}
+  .card-head h2{font-size:16px; margin:0 0 3px;}
+  .card-head p{margin:0; font-size:12.5px; color:var(--text-muted);}
+
+  .chartwrap{overflow-x:auto;}
+  svg text{fill:var(--text-secondary); font-family:'Noto Sans Thai','Noto Sans',sans-serif;}
+  .bar-label{fill:var(--text-primary); font-size:11px;}
+  .cat-label{font-size:11.5px;}
+  .median-line{stroke:var(--median-border); stroke-width:2; stroke-dasharray:4 3;}
+  .median-tag{fill:var(--median-border); font-size:10.5px; font-weight:700;}
+  .bar-rect{cursor:pointer;} .bar-rect:hover{filter:brightness(1.08);}
+  .bar-hl-ring{fill:none; stroke:var(--highlight-border); stroke-width:2;}
+  .tooltip{position:absolute; pointer-events:none; background:var(--text-primary); color:var(--surface-1); font-size:12px; padding:7px 10px; border-radius:8px; line-height:1.5; max-width:220px; opacity:0; transition:opacity .1s; z-index:50; box-shadow:0 4px 14px rgba(0,0,0,.18);}
+  .empty-note{padding:30px 10px; text-align:center; color:var(--text-muted); font-size:13px;}
+
+  /* Bounded height + its own vertical scrollbar, so the sticky thead (position:sticky top:0 below)
+     actually has something to stick within — without a bounded height here, .tablewrap never
+     scrolls internally (it just grows with its content) and the sticky header scrolls away with
+     the page instead of staying pinned to the top of the visible table area. */
+  .tablewrap{overflow-x:auto; overflow-y:auto; max-height:74vh; border-radius:10px; border:1px solid var(--border);}
+  table{border-collapse:collapse; width:100%; font-size:12.5px; font-variant-numeric:tabular-nums;}
+  thead th{position:sticky; top:0; background:var(--surface-2); z-index:3; border-bottom:1px solid var(--border); white-space:nowrap;}
+  th.grp-rev{background:var(--rev-soft);} th.grp-exp{background:var(--exp-soft);} th.grp-3{background:var(--series3-soft);}
+  th button{font:inherit; font-weight:700; color:var(--text-secondary); background:transparent; border:none; padding:9px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap;}
+  th button:hover{color:var(--text-primary);}
+  th.rowhead-col{position:sticky; left:0; z-index:4; background:var(--surface-2); text-align:left;}
+  td.rowhead-col{position:sticky; left:0; z-index:1; background:var(--surface-1); text-align:left; font-weight:600;}
+  td{padding:8px 10px; text-align:right; border-bottom:1px solid var(--grid); white-space:nowrap; color:var(--text-primary);}
+  td.name{text-align:left; font-weight:500;}
+  td.col-rev{background:color-mix(in srgb, var(--rev-tint) 35%, transparent);}
+  td.col-exp{background:color-mix(in srgb, var(--exp-tint) 35%, transparent);}
+  td.col-3{background:color-mix(in srgb, var(--series3-soft) 55%, transparent);}
+  tr:hover td{background:var(--surface-2);}
+  tr.median-row{background:var(--median-bg);}
+  tr.median-row td{background:var(--median-bg); font-weight:700; border-top:1px solid var(--median-border); border-bottom:1px solid var(--median-border);}
+  td.net-pos{color:var(--good); font-weight:600;} td.net-neg{color:var(--critical); font-weight:600;}
+  .col-sep{border-left:1px solid var(--border);}
+  input.search{font:inherit; font-size:13.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:200px; color:var(--text-primary);}
+
+  /* ---------- transposed panel table (categories = rows, hospitals = columns) ---------- */
+  table.tp{width:auto;}
+  table.tp th.rowhead-col{min-width:220px; max-width:220px; width:220px; white-space:normal; line-height:1.35; padding:9px 10px;}
+  table.tp th.colhead-cell{cursor:pointer; text-align:left;}
+  table.tp th.hosp-th{cursor:pointer; text-align:right; font-weight:700; padding:9px 8px; min-width:84px; width:84px;}
+  table.tp th.hosp-th .hn{display:block; max-width:78px; overflow:hidden; text-overflow:ellipsis; margin-left:auto;}
+  table.tp td{min-width:84px;}
+  table.tp th.hosp-th[aria-current="true"]{color:var(--accent);}
+  table.tp th.med-th{position:sticky; left:220px; z-index:4; background:var(--median-bg); color:var(--median-border); text-align:right; padding:9px 10px; border-left:1px solid var(--median-border); border-right:1px solid var(--median-border);}
+  table.tp td.med-td{position:sticky; left:220px; z-index:1; background:var(--median-bg); font-weight:700; border-left:1px solid var(--median-border); border-right:1px solid var(--median-border);}
+  table.tp td.rowhead-col{white-space:normal; line-height:1.3; padding:8px 10px;}
+  table.tp tr.grp-row td, table.tp tr.grp-row th{font-weight:700; border-top:1px solid var(--border);}
+  table.tp tr.grp-row td.rowhead-col{background:var(--surface-2);}
+  table.tp tr.grp-row.rev td.rowhead-col{color:var(--rev);} table.tp tr.grp-row.exp td.rowhead-col{color:var(--exp);}
+  table.tp tr.mid-row td.rowhead-col{font-weight:600; color:var(--text-secondary); font-size:12px; border-top:1px solid var(--grid);}
+  table.tp tr.sub-row td.rowhead-col{font-weight:400; color:var(--text-muted); font-size:11.5px;}
+  table.tp td.hl-col{background:var(--highlight-bg); outline:1.5px solid var(--highlight-border); outline-offset:-1.5px;}
+  table.tp th.hl-col{background:var(--highlight-bg);}
+  table.tp .corner-btn{cursor:pointer; background:transparent; border:none; font:inherit; font-weight:700; color:var(--text-secondary); padding:0; text-align:left; width:100%;}
+  table.tp .corner-btn:hover{color:var(--text-primary);}
+
+  .legend{display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--text-secondary); margin-top:10px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:11px; height:11px; border-radius:3px; display:inline-block;}
+
+  footer{margin-top:10px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); line-height:1.7;}
+  footer b{color:var(--text-secondary);}
+  .loading{padding:60px 0; text-align:center; color:var(--text-muted); font-size:14px;}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Quick Method · กองเศรษฐกิจสุขภาพ</p>
+    <h1>แดชบอร์ดวิเคราะห์รายรับ–รายจ่าย โรงพยาบาล เขตสุขภาพที่ 1</h1>
+    <p class="sub" id="metaLine">กำลังโหลดข้อมูล…</p>
+  </header>
+
+  <div id="app"><div class="loading">กำลังโหลดข้อมูลทางการเงิน…</div></div>
+
+  <footer id="footNote"></footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var TABS = [
+    {id:1, label:"ภาพรวม"},
+    {id:2, label:"รายได้ OPD"},
+    {id:3, label:"รายได้ IPD"},
+    {id:4, label:"รายจ่าย LC"},
+    {id:5, label:"รายจ่าย MC"},
+    {id:6, label:"รายได้อื่น (OthRev)"},
+    {id:7, label:"รายได้สม่ำเสมอ (ไม่รวมเหมาจ่าย)"},
+    {id:8, label:"รายจ่ายประจำ(เงินบำรุง)"},
+    {id:9, label:"สรุป ฉ.11/ฉ.12"}
+  ];
+  var LEVELS = ['A','S','M1','M2','F1','F2','F3'];
+
+  var STATE = {
+    tab: 1,
+    filterMode: "filter",       // "filter" | "manual"
+    province: "", level: "", group: "",
+    manualSet: {},               // orgId -> true
+    focus: "",                   // orgId pinned/highlighted (may be outside the filtered cohort)
+    lcFund: "all",                // "all" | "self" (เงินบำรุง) | "budget" (เงินงบประมาณ) — Labor Cost tab only
+    avgView: {},                  // tabId -> "avg" — per-tab "หารเฉลี่ยรายเดือน" toggle (panel.avgToggle tabs only)
+    period: null,
+    metric: "ytd", basis: "raw",
+    chartSel: {1:"TOTAL_REV", 2:"TOTAL_OPD", 3:"TOTAL_IPD", 4:"TOTAL_LC", 5:"TOTAL_MC", 6:"TOTAL_OTHREV", 7:"TOTAL_REGULAR", 8:"TOTAL_RECURRING", 9:"TOTAL_CHOR1112"},
+    sortKey: {1:"TOTAL_REV",2:"TOTAL_OPD",3:"TOTAL_IPD",4:"TOTAL_LC",5:"TOTAL_MC",6:"TOTAL_OTHREV",7:"TOTAL_REGULAR",8:"TOTAL_RECURRING",9:"TOTAL_CHOR1112"},
+    sortDir: {1:-1,2:-1,3:-1,4:-1,5:-1,6:-1,7:-1,8:-1,9:-1}
+  };
+
+  var DATA = null;
+  var PANELS = {}; // built after data loads
+
+  /* ---------- formatting helpers ---------- */
+  function thb(n, decimals){
+    if(n===undefined||n===null||isNaN(n)) return "—";
+    var d = decimals===undefined ? 0 : decimals;
+    return Number(n).toLocaleString('th-TH', {minimumFractionDigits:d, maximumFractionDigits:d});
+  }
+  function compact(n){
+    if(n===undefined||n===null||isNaN(n)) return "—";
+    var abs = Math.abs(n);
+    if(abs>=1e9) return (n/1e9).toLocaleString('th-TH',{maximumFractionDigits:2})+" พันล้าน";
+    if(abs>=1e6) return (n/1e6).toLocaleString('th-TH',{maximumFractionDigits:2})+" ล้าน";
+    if(abs>=1e3) return (n/1e3).toLocaleString('th-TH',{maximumFractionDigits:1})+" พัน";
+    if(abs<10) return n.toLocaleString('th-TH',{maximumFractionDigits:2});
+    return thb(n,0);
+  }
+  function median(arr){
+    var a = arr.filter(function(v){return v!==null && v!==undefined && !isNaN(v);}).slice().sort(function(x,y){return x-y;});
+    if(!a.length) return null;
+    var mid = Math.floor(a.length/2);
+    return a.length%2 ? a[mid] : (a[mid-1]+a[mid])/2;
+  }
+  function truncate(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
+  function getCss(v){ return getComputedStyle(document.body).getPropertyValue(v).trim(); }
+  // "หารเฉลี่ยรายเดือน" support (tabs 8/9 so far, any panel.avgToggle=true tab): when on, every
+  // figure is the YTD-so-far total divided by how many months of the fiscal year have elapsed as
+  // of the selected period — regardless of the global "มุมมองยอด" (YTD/เดือนนี้) toggle, since an
+  // average is always computed against the cumulative total, never a single month's raw figure.
+  function isAvgOn(panel){ return !!(panel && panel.avgToggle && STATE.avgView[panel.tabId]==='avg'); }
+  function periodIndex(key){
+    var idx = -1;
+    (DATA.periods||[]).forEach(function(p,i){ if(p.key===key) idx=i; });
+    return idx;
+  }
+  function pickMetricValue(panel, raw){
+    if(isAvgOn(panel)){
+      var n = periodIndex(STATE.period)+1;
+      return n>0 ? raw[1]/n : raw[1];
+    }
+    return STATE.metric==='month' ? raw[0] : raw[1];
+  }
+  function unitLabel(panel){ var base = STATE.basis==="raw" ? "บาท" : "บาท / ประชากร UC 1 คน"; return isAvgOn(panel) ? base+' ต่อเดือน (เฉลี่ย)' : base; }
+  function fmtPeriodLabel(key, panel){
+    var p = DATA.periods.filter(function(x){return x.key===key;})[0];
+    if(!p) return key;
+    if(isAvgOn(panel)){
+      var n = periodIndex(key)+1;
+      return p.label + ' (เฉลี่ยต่อเดือน — สะสม '+n+' เดือน ÷ '+n+')';
+    }
+    return p.label + " " + (STATE.metric==="ytd" ? "(สะสมถึงเดือนนี้)" : "(เดือนนี้)");
+  }
+
+  var tip = null;
+  function showTip(evt, html){
+    if(!tip) tip = document.getElementById('tooltip');
+    tip.innerHTML = html; tip.style.opacity = 1;
+    tip.style.left = (evt.pageX+14)+'px'; tip.style.top = (evt.pageY+10)+'px';
+  }
+  function hideTip(){ if(tip) tip.style.opacity=0; }
+
+  /* ---------- data access ---------- */
+  function rawFor(source, orgId, id){
+    var pd = DATA.data[orgId] && DATA.data[orgId][STATE.period];
+    if(!pd) return [0,0];
+    var bucket = source==='qm' ? pd.qm : source==='payer' ? pd.payer : pd.sub;
+    return bucket[id] || [0,0];
+  }
+  /* Generic recursive node value: a "group" node (has kids) sums its children; a "leaf" node reads
+     straight from the raw data bucket. This is what lets tabs 2/3 nest item -> payer -> OPD/IPD total
+     while tabs 1/4/5/6 stay a flat total -> item tree, all through the same function. */
+  function nodeIncluded(panel, node){
+    if(!panel.fundFilterable || STATE.lcFund==='all') return true;
+    if(!node.fund) return true; // group nodes carry no fund tag themselves — only their leaves do
+    return node.fund===STATE.lcFund;
+  }
+  function compositeFor(panel, orgId, id){
+    var node = panel.nodesById[id];
+    if(!node) return [0,0];
+    if(node.kids && node.kids.length){
+      var m=0,y=0;
+      node.kids.forEach(function(k){
+        if(!nodeIncluded(panel,k)) return;
+        var r=compositeFor(panel, orgId, k.id); m+=r[0]; y+=r[1];
+      });
+      return [m,y];
+    }
+    return rawFor(node.source, orgId, node.id);
+  }
+  function fundSuffix(panel){
+    if(!panel.fundFilterable || STATE.lcFund==='all') return '';
+    return STATE.lcFund==='self' ? ' — เฉพาะเงินบำรุง' : ' — เฉพาะเงินงบประมาณ';
+  }
+  function valFor(panel, orgId, id){
+    var raw = compositeFor(panel, orgId, id);
+    var v = pickMetricValue(panel, raw);
+    if(STATE.basis==='raw') return v;
+    var h = DATA.hospById[orgId];
+    if(!h || !h.ucPop) return null;
+    return v/h.ucPop;
+  }
+  // Per-hospital self-fund vs budget-fund split of a node's value (panel.fundBreakdown panels'
+  // chart only) — same computation as renderPanelKPIs's breakdown tiles: walk the node's real
+  // leaves directly and bucket by their own fund tag, bypassing STATE.lcFund/nodeIncluded so this
+  // is always the true full split. Only drawn when STATE.lcFund==='all' (see renderPanelChart), so
+  // it never disagrees with the bar's own total width, which in that state is already unfiltered.
+  function fundSplitRaw(panel, orgId, node){
+    if(node.kids && node.kids.length){
+      var self=0, budget=0;
+      node.kids.forEach(function(k){
+        var r = fundSplitRaw(panel, orgId, k);
+        self += r.self; budget += r.budget;
+      });
+      return {self:self, budget:budget};
+    }
+    var v = pickMetricValue(panel, rawFor(node.source, orgId, node.id));
+    if(node.fund==='self') return {self:v, budget:0};
+    if(node.fund==='budget') return {self:0, budget:v};
+    return {self:0, budget:0};
+  }
+  function fundSplitFor(panel, orgId, id){
+    var node = panel.nodesById[id];
+    if(!node) return {self:0, budget:0};
+    var r = fundSplitRaw(panel, orgId, node);
+    if(STATE.basis==='raw') return r;
+    var h = DATA.hospById[orgId];
+    if(!h || !h.ucPop) return {self:null, budget:null};
+    return {self:r.self/h.ucPop, budget:r.budget/h.ucPop};
+  }
+
+  /* ---------- cohort (filter-driven or manually-picked hospital set) ---------- */
+  function cohortHospitals(){
+    if(STATE.filterMode==='manual'){
+      return DATA.hospitals.filter(function(h){ return !!STATE.manualSet[h.orgId]; });
+    }
+    return DATA.hospitals.filter(function(h){
+      return (!STATE.province || h.province===STATE.province) &&
+             (!STATE.level || h.level===STATE.level) &&
+             (!STATE.group || h.group===STATE.group);
+    });
+  }
+  // hospitals actually shown as chart bars / table columns: the cohort, plus the focused hospital
+  // pinned in even when it sits outside the current filter (a deliberate cross-group reference point).
+  function displayHospitals(){
+    var base = cohortHospitals();
+    if(STATE.focus && !base.some(function(h){return h.orgId===STATE.focus;})){
+      var fh = DATA.hospById[STATE.focus];
+      if(fh) return [fh].concat(base);
+    }
+    return base;
+  }
+  function cohortLabel(){
+    var n = cohortHospitals().length;
+    if(STATE.filterMode==='manual') return 'เลือกโรงพยาบาลเอง • ' + n + ' แห่ง';
+    var parts = [STATE.province||'ทุกจังหวัด', STATE.level?('ขนาด '+STATE.level):'ทุกขนาด', STATE.group||'ทุกกลุ่มบริการ'];
+    return parts.join(' • ') + ' (' + n + ' แห่ง)';
+  }
+
+  /* ============================================================
+     Panel tree construction — every comparison panel (tabs 1-6) is a small forest of "root" totals;
+     each root's kids are either raw leaf categories (tabs 1,4,5,6 — one level) or payer-type subtotals
+     whose own kids are the real Quick Method leaf line items (tabs 2,3 — two levels). compositeFor()
+     above walks this tree recursively so the same code renders both shapes.
+     ============================================================ */
+  function makeLeaf(id, label, kind, source, fund){ return {id:id, label:label, kind:kind, source:source, kids:[], fund:fund}; }
+  function makeGroup(id, label, kind, kids, groupLabel){ return {id:id, label:label, kind:kind, kids:kids||[], groupLabel:groupLabel}; }
+  function indexNodes(map, node){ map[node.id]=node; (node.kids||[]).forEach(function(k){ indexNodes(map,k); }); }
+  function flattenTree(roots){
+    var out=[];
+    function walk(node, level){
+      out.push({id:node.id, label:node.label, kind:node.kind, level:level, isLeaf: !(node.kids&&node.kids.length)});
+      (node.kids||[]).forEach(function(k){ walk(k, level+1); });
+    }
+    roots.forEach(function(r){ walk(r,0); });
+    return out;
+  }
+  function finalizePanel(tabId, kind, roots){
+    var nodesById = {};
+    roots.forEach(function(r){ indexNodes(nodesById, r); });
+    return {tabId:tabId, kind:kind, roots:roots, nodesById:nodesById, rowSpec: flattenTree(roots)};
+  }
+  function idKind(panel, id){ var n=panel.nodesById[id]; return n ? n.kind : panel.kind; }
+  function idLabel(panel, id){ var n=panel.nodesById[id]; return n ? n.label : id; }
+
+  function buildPanelDom(tabId, titleHtml, subHtml, extraHeaderHtml){
+    return (
+      '<div class="kpis" id="kpis'+tabId+'"></div>' +
+      '<div class="card">' +
+        '<div class="card-head">' +
+          '<div><h2>'+titleHtml+'</h2><p id="chartSub'+tabId+'">'+subHtml+'</p></div>' +
+          (extraHeaderHtml||'') +
+          '<div class="field"><label>เลือกรายการ</label><select id="catSel'+tabId+'"></select></div>' +
+        '</div>' +
+        '<div class="chartwrap"><svg id="chartSvg'+tabId+'"></svg></div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="card-head"><div><h2 id="tableTitle'+tabId+'">ตารางข้อมูลดิบ</h2><p id="tableSub'+tabId+'"></p></div></div>' +
+        '<div class="tablewrap"><table id="dataTable'+tabId+'"></table></div>' +
+        '<div class="legend" id="legend'+tabId+'"></div>' +
+      '</div>'
+    );
+  }
+
+  function buildCatSelect(panel){
+    var catSel = document.getElementById('catSel'+panel.tabId);
+    catSel.innerHTML = '';
+    panel.roots.forEach(function(root){
+      var o = document.createElement('option'); o.value=root.id; o.textContent='▸ '+root.label; catSel.appendChild(o);
+      if(root.kids && root.kids.length){
+        var grp = document.createElement('optgroup'); grp.label = root.groupLabel || root.label;
+        var any = false;
+        (function walk(node, depth){
+          node.kids.forEach(function(k){
+            if(panel.fundFilterable && !nodeIncluded(panel,k)) return;
+            var opt = document.createElement('option'); opt.value=k.id;
+            var prefix = depth===1 ? '－ ' : ('　'.repeat(depth-1)+'· ');
+            opt.textContent = prefix + k.label;
+            grp.appendChild(opt);
+            any = true;
+            if(k.kids && k.kids.length) walk(k, depth+1);
+          });
+        })(root, 1);
+        if(any) catSel.appendChild(grp);
+      }
+    });
+    if(!Array.prototype.some.call(catSel.options, function(o){return o.value===STATE.chartSel[panel.tabId];})){
+      STATE.chartSel[panel.tabId] = panel.roots[0].id;
+    }
+    catSel.value = STATE.chartSel[panel.tabId];
+  }
+
+  function initPanel(panel){
+    buildCatSelect(panel);
+    var catSel = document.getElementById('catSel'+panel.tabId);
+    catSel.addEventListener('change', function(){ STATE.chartSel[panel.tabId]=this.value; renderPanel(panel); });
+
+    var legendHtml = '';
+    if(panel.kind==='mixed'){
+      legendHtml = '<span><i class="swatch" style="background:var(--rev)"></i>รายรับ</span><span><i class="swatch" style="background:var(--exp)"></i>รายจ่าย</span>';
+    } else {
+      var c = panel.kind==='revenue' ? 'var(--rev)' : 'var(--exp)';
+      legendHtml = '<span><i class="swatch" style="background:'+c+'"></i>'+(panel.kind==='revenue'?'รายรับ':'รายจ่าย')+'</span>';
+    }
+    legendHtml += '<span><i class="swatch" style="background:var(--median-border)"></i>แถว/เส้นค่ามัธยฐานของกลุ่ม</span>';
+    document.getElementById('legend'+panel.tabId).innerHTML = legendHtml;
+  }
+
+  function renderPanelKPIs(panel){
+    var hs = cohortHospitals();
+    var mainTotal = panel.roots[0];
+    var mainLabel = mainTotal.label + fundSuffix(panel);
+    var vals = hs.map(function(h){ return valFor(panel, h.orgId, mainTotal.id); });
+    var med = median(vals);
+    var sumRaw = 0;
+    hs.forEach(function(h){ sumRaw += pickMetricValue(panel, compositeFor(panel, h.orgId, mainTotal.id)); });
+
+    var extraTile;
+    if(panel.roots.length>1){
+      var t2 = panel.roots[1];
+      var vals2 = hs.map(function(h){ return valFor(panel, h.orgId, t2.id); });
+      var med2 = median(vals2);
+      var sum2 = 0; hs.forEach(function(h){ sum2 += pickMetricValue(panel, compositeFor(panel, h.orgId, t2.id)); });
+      extraTile = '<div class="tile"><div class="label">'+t2.label+'รวมทั้งกลุ่ม</div><div class="value" style="color:'+(t2.kind==='expense'?'var(--exp)':'var(--rev)')+'">'+compact(sum2)+' บาท</div><div class="delta">มัธยฐานต่อแห่ง '+compact(med2)+' '+unitLabel(panel)+'</div></div>';
+    } else {
+      var validVals = vals.filter(function(v){return v!==null && v!==undefined && !isNaN(v);});
+      var mean = validVals.length ? validVals.reduce(function(a,b){return a+b;},0)/validVals.length : null;
+      var maxV = validVals.length ? Math.max.apply(null, validVals) : null;
+      extraTile = '<div class="tile"><div class="label">ค่าเฉลี่ยต่อแห่ง (Mean)</div><div class="value">'+compact(mean)+'</div><div class="delta">สูงสุดในกลุ่ม '+compact(maxV)+' '+unitLabel(panel)+'</div></div>';
+    }
+
+    var hlTile;
+    if(STATE.focus && DATA.hospById[STATE.focus]){
+      var h = DATA.hospById[STATE.focus];
+      var v = valFor(panel, STATE.focus, mainTotal.id);
+      var diff = (v===null||med===null) ? null : v-med;
+      hlTile = '<div class="tile"><div class="label">'+truncate(h.name,20)+' vs มัธยฐานกลุ่ม</div>' +
+        '<div class="value '+(diff!==null && diff>=0?'good':'critical')+'">'+(diff!==null?(diff>=0?'+':'')+compact(diff):'—')+'</div>' +
+        '<div class="delta">'+unitLabel(panel)+' • ค่าจริง '+compact(v)+'</div></div>';
+    } else {
+      hlTile = '<div class="tile"><div class="label">ค่ามัธยฐาน — '+mainLabel+'</div><div class="value">'+compact(med)+'</div><div class="delta">'+unitLabel(panel)+'</div></div>';
+    }
+
+    // Fund-source breakdown tiles (panel.fundBreakdown=true tabs only, e.g. tab9): เงินบำรุง vs
+    // เงินงบประมาณ totals + their share of the grand total, always shown side by side regardless
+    // of the fund-filter toggle above (which only changes what the main/chart/table figures show).
+    var breakdownTiles = '';
+    if(panel.fundBreakdown){
+      var selfSum=0, budgetSum=0;
+      hs.forEach(function(h){
+        (mainTotal.kids||[]).forEach(function(leaf){
+          var v = pickMetricValue(panel, rawFor(leaf.source, h.orgId, leaf.id));
+          if(leaf.fund==='self') selfSum+=v; else if(leaf.fund==='budget') budgetSum+=v;
+        });
+      });
+      var fbTotal = selfSum+budgetSum;
+      var selfPct = fbTotal ? (selfSum/fbTotal*100) : 0;
+      var budgetPct = fbTotal ? (budgetSum/fbTotal*100) : 0;
+      breakdownTiles =
+        '<div class="tile"><div class="label">จ่ายจากเงินบำรุง</div><div class="value" style="color:var(--exp)">'+compact(selfSum)+' บาท</div><div class="delta">'+selfPct.toFixed(1)+'% ของยอดรวม</div></div>' +
+        '<div class="tile"><div class="label">จ่ายจากเงินงบประมาณ</div><div class="value" style="color:var(--exp)">'+compact(budgetSum)+' บาท</div><div class="delta">'+budgetPct.toFixed(1)+'% ของยอดรวม</div></div>' +
+        '<div class="tile"><div class="label">ยอดรวมทั้งสองแหล่งเงิน</div><div class="value" style="color:var(--exp)">'+compact(fbTotal)+' บาท</div><div class="delta">'+unitLabel(panel)+'</div></div>';
+    }
+
+    document.getElementById('kpis'+panel.tabId).innerHTML =
+      '<div class="tile"><div class="label">จำนวนโรงพยาบาลในกลุ่ม</div><div class="value">'+hs.length+' แห่ง</div><div class="delta">'+cohortLabel()+'</div></div>' +
+      '<div class="tile"><div class="label">'+mainTotal.label+' รวมทั้งกลุ่ม'+fundSuffix(panel)+'</div><div class="value" style="color:'+(mainTotal.kind==='expense'?'var(--exp)':'var(--rev)')+'">'+compact(sumRaw)+' บาท</div><div class="delta">มัธยฐานต่อแห่ง '+compact(med)+' '+unitLabel(panel)+'</div></div>' +
+      extraTile + hlTile + breakdownTiles;
+  }
+
+  function renderPanelChart(panel){
+    var svg = document.getElementById('chartSvg'+panel.tabId);
+    var id = STATE.chartSel[panel.tabId];
+    var kind = idKind(panel, id);
+    var color = kind==='expense' ? getCss('--exp') : (kind==='series3' ? getCss('--series3') : getCss('--rev'));
+    // Split each hospital's bar into เงินบำรุง/เงินงบประมาณ segments, per user request — only when
+    // the fund-filter toggle is at "ทั้งหมด" (see fundSplitFor's comment for why: at that setting the
+    // bar's own total width is already the true unfiltered total, so the two segments always sum to
+    // exactly that width; a self-only/budget-only filter has nothing left to split, so we fall back
+    // to the normal single-color bar in that case).
+    var splitOn = !!(panel.fundBreakdown && STATE.lcFund==='all');
+    var selfColor = getCss('--exp'), budgetColor = getCss('--series3');
+    var dec = STATE.basis==='raw' ? 0 : 2;
+
+    var groupHs = cohortHospitals();
+    var medBase = groupHs.map(function(h){ return valFor(panel, h.orgId, id); }).filter(function(v){return v!==null && !isNaN(v);});
+    var med = median(medBase);
+
+    var hs = displayHospitals();
+    var rows = hs.map(function(h){ return {h:h, v: valFor(panel, h.orgId, id)}; }).filter(function(r){return r.v!==null && !isNaN(r.v);});
+    rows.sort(function(a,b){ return b.v-a.v; });
+    var n = rows.length;
+
+    if(!n){
+      svg.innerHTML=''; svg.removeAttribute('viewBox');
+      document.getElementById('chartSub'+panel.tabId).innerHTML = 'ไม่มีข้อมูลในกลุ่มที่เลือก — ลองปรับตัวกรองด้านบน';
+      return;
+    }
+
+    var rowH=22, gap=6;
+    var chartH = n*(rowH+gap)+40;
+    var leftW=190, rightPad=74, width=900, plotW=width-leftW-rightPad;
+    var maxAbs = Math.max.apply(null, rows.map(function(r){return Math.abs(r.v);}).concat([Math.abs(med||0),1]));
+    var scale = function(v){ return (v/maxAbs)*plotW; };
+
+    svg.setAttribute('viewBox','0 0 '+width+' '+chartH);
+    svg.setAttribute('width','100%'); svg.setAttribute('height',chartH);
+    svg.innerHTML='';
+    var ns='http://www.w3.org/2000/svg';
+    function el(tag,attrs){ var e=document.createElementNS(ns,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+    svg.appendChild(el('line',{x1:leftW,x2:leftW,y1:6,y2:chartH-28,stroke:getCss('--baseline'),'stroke-width':1}));
+
+    rows.forEach(function(r,i){
+      var y = 10+i*(rowH+gap);
+      var isHl = STATE.focus && r.h.orgId===STATE.focus;
+      var w = Math.max(2, Math.abs(scale(r.v)));
+      var x = r.v>=0 ? leftW : leftW-w;
+
+      var label = el('text',{x:leftW-8,y:y+rowH*0.68,'text-anchor':'end',class:'cat-label'});
+      label.textContent = truncate(r.h.name,22);
+      if(isHl) label.setAttribute('font-weight','700');
+      svg.appendChild(label);
+
+      if(splitOn && r.v>0){
+        var sp = fundSplitFor(panel, r.h.orgId, id);
+        var spSelf = sp.self||0, spBudget = sp.budget||0;
+        var wSelf = Math.max(0, scale(spSelf));
+        var wBudget = Math.max(0, scale(spBudget));
+        var segGap = (wSelf>0.5 && wBudget>0.5) ? 2 : 0;
+        var xSelf = x, xBudget = x+wSelf+segGap;
+        var rectSelf=null, rectBudget=null;
+        if(wSelf>0.5){ rectSelf = el('rect',{x:xSelf,y:y,width:wSelf,height:rowH,rx:4,fill:isHl?getCss('--accent'):selfColor,opacity:isHl?1:0.85,class:'bar-rect'}); svg.appendChild(rectSelf); }
+        if(wBudget>0.5){ rectBudget = el('rect',{x:xBudget,y:y,width:wBudget,height:rowH,rx:4,fill:isHl?getCss('--accent'):budgetColor,opacity:isHl?1:0.85,class:'bar-rect'}); svg.appendChild(rectBudget); }
+        if(isHl) svg.appendChild(el('rect',{x:x-1.5,y:y-1.5,width:w+3,height:rowH+3,rx:5,class:'bar-hl-ring'}));
+
+        var vlabel = el('text',{x:x+w+6,y:y+rowH*0.68,'text-anchor':'start',class:'bar-label'});
+        vlabel.textContent = compact(r.v);
+        svg.appendChild(vlabel);
+
+        var fbTot = spSelf+spBudget;
+        var selfPctRow = fbTot ? (spSelf/fbTot*100) : 0;
+        var budgetPctRow = fbTot ? (spBudget/fbTot*100) : 0;
+        var tipHtml = r.h.name+'<br>'+idLabel(panel,id)+
+          '<br>เงินบำรุง: <b>'+thb(spSelf,dec)+'</b> ('+selfPctRow.toFixed(1)+'%)'+
+          '<br>เงินงบประมาณ: <b>'+thb(spBudget,dec)+'</b> ('+budgetPctRow.toFixed(1)+'%)'+
+          '<br>รวม: <b>'+thb(r.v,dec)+'</b> '+unitLabel(panel);
+        [rectSelf,rectBudget].forEach(function(rc){
+          if(!rc) return;
+          rc.addEventListener('mousemove', function(evt){ showTip(evt, tipHtml); });
+          rc.addEventListener('mouseleave', hideTip);
+        });
+      } else {
+        var rect = el('rect',{x:x,y:y,width:w,height:rowH,rx:4,fill:isHl?getCss('--accent'):color,opacity:isHl?1:0.82,class:'bar-rect'});
+        svg.appendChild(rect);
+        if(isHl) svg.appendChild(el('rect',{x:x-1.5,y:y-1.5,width:w+3,height:rowH+3,rx:5,class:'bar-hl-ring'}));
+
+        var vlabel2 = el('text',{x:x+(r.v>=0?w+6:-6),y:y+rowH*0.68,'text-anchor':r.v>=0?'start':'end',class:'bar-label'});
+        vlabel2.textContent = compact(r.v);
+        svg.appendChild(vlabel2);
+
+        rect.addEventListener('mousemove', function(evt){ showTip(evt, r.h.name+'<br>'+idLabel(panel,id)+'<br><b>'+thb(r.v,dec)+'</b> '+unitLabel(panel)); });
+        rect.addEventListener('mouseleave', hideTip);
+      }
+    });
+
+    if(med!==null){
+      var mx = leftW+scale(med);
+      svg.appendChild(el('line',{x1:mx,x2:mx,y1:2,y2:chartH-30,class:'median-line'}));
+      var medTag = el('text',{x:mx,y:chartH-16,'text-anchor':'middle',class:'median-tag'});
+      medTag.textContent = 'มัธยฐาน '+compact(med);
+      svg.appendChild(medTag);
+    }
+
+    document.getElementById('chartSub'+panel.tabId).innerHTML =
+      idLabel(panel,id) + fundSuffix(panel) + ' — ' + fmtPeriodLabel(STATE.period, panel) + ' • หน่วย: ' + unitLabel(panel) + ' • ' + n + ' แห่ง';
+
+    if(splitOn){
+      var selfSumC=0, budgetSumC=0;
+      rows.forEach(function(r){
+        var sp2 = fundSplitFor(panel, r.h.orgId, id);
+        selfSumC += (sp2.self||0); budgetSumC += (sp2.budget||0);
+      });
+      var fbSumTot = selfSumC+budgetSumC;
+      var selfSumPct = fbSumTot ? (selfSumC/fbSumTot*100) : 0;
+      var budgetSumPct = fbSumTot ? (budgetSumC/fbSumTot*100) : 0;
+      document.getElementById('legend'+panel.tabId).innerHTML =
+        '<span><i class="swatch" style="background:'+selfColor+'"></i>เงินบำรุง ('+selfSumPct.toFixed(1)+'%)</span>' +
+        '<span><i class="swatch" style="background:'+budgetColor+'"></i>เงินงบประมาณ ('+budgetSumPct.toFixed(1)+'%)</span>' +
+        '<span><i class="swatch" style="background:var(--median-border)"></i>แถว/เส้นค่ามัธยฐานของกลุ่ม</span>';
+    } else if(panel.fundBreakdown){
+      // fund filter is not "all" — nothing to split, revert legend to the plain single-color swatch
+      var c2 = panel.kind==='revenue' ? 'var(--rev)' : 'var(--exp)';
+      document.getElementById('legend'+panel.tabId).innerHTML =
+        '<span><i class="swatch" style="background:'+c2+'"></i>'+(panel.kind==='revenue'?'รายรับ':'รายจ่าย')+fundSuffix(panel)+'</span>' +
+        '<span><i class="swatch" style="background:var(--median-border)"></i>แถว/เส้นค่ามัธยฐานของกลุ่ม</span>';
+    }
+  }
+
+  /* Transposed layout: hospital names run across the header (columns), categories run down the left
+     (rows). Each panel's rowSpec (precomputed by flattenTree) may be 1 or 2 levels deep — a bold total
+     row, an optional semi-bold payer-subtotal row, then indented real Quick Method line items — so a
+     hospital that under-performs in one specific line item stays visible even when the total looks fine. */
+  function renderPanelTable(panel){
+    var groupHs = cohortHospitals();
+    var hospitals = displayHospitals().slice();
+
+    var sk = STATE.sortKey[panel.tabId];
+    var sd = STATE.sortDir[panel.tabId] || -1;
+    function hospVal(h){ return sk==='__NAME__' ? h.name : valFor(panel, h.orgId, sk); }
+    hospitals.sort(function(a,b){
+      var av=hospVal(a), bv=hospVal(b);
+      if(typeof av==='string') return sd*av.localeCompare(bv,'th');
+      av = av===null||av===undefined?-Infinity:av; bv=bv===null||bv===undefined?-Infinity:bv;
+      return sd*(av-bv);
+    });
+    if(STATE.focus){
+      var idx = -1;
+      hospitals.forEach(function(h,i){ if(h.orgId===STATE.focus) idx=i; });
+      if(idx>0){ hospitals.unshift(hospitals.splice(idx,1)[0]); }
+    }
+
+    var dec = STATE.basis==='raw'?0:2;
+    var table = document.getElementById('dataTable'+panel.tabId);
+    table.className = 'tp';
+
+    if(!hospitals.length){
+      table.innerHTML = '<tbody><tr><td class="empty-note">ไม่มีโรงพยาบาลในกลุ่มที่เลือก — ลองปรับตัวกรองด้านบน หรือสลับเป็น "เลือก รพ. เอง"</td></tr></tbody>';
+      document.getElementById('tableSub'+panel.tabId).textContent = '';
+      return;
+    }
+
+    var thead = '<thead><tr>' +
+      '<th class="rowhead-col"><button class="corner-btn" title="คลิกเพื่อเรียงชื่อโรงพยาบาล ก-ฮ">รายการ ▾</button></th>' +
+      '<th class="med-th">มัธยฐาน<br><span style="font-weight:400;font-size:9.5px">('+groupHs.length+' แห่งในกลุ่ม)</span></th>' +
+      hospitals.map(function(h){
+        var isHl = STATE.focus===h.orgId;
+        var outside = isHl && !groupHs.some(function(x){return x.orgId===h.orgId;});
+        return '<th class="hosp-th'+(isHl?' hl-col':'')+'" aria-current="'+isHl+'" title="'+h.name+' • '+h.province+' • '+h.group+' • UC '+thb(h.ucPop)+' คน — คลิกเพื่อเน้น/ปักหมุด">'+
+          '<span class="hn">'+truncate(h.name.replace('รพ. ',''),13)+'</span>'+(outside?'<span style="display:block;font-weight:400;font-size:9px;color:var(--accent)">(นอกกลุ่ม)</span>':'')+'</th>';
+      }).join('') +
+      '</tr></thead>';
+
+    var rowSpec = panel.fundFilterable && STATE.lcFund!=='all'
+      // group rows (level 0, or any subgroup header — no fund tag of their own) always pass through;
+      // only leaf rows are filtered by fund. A group whose matching-fund total is 0 still gets dropped
+      // right below by the all-zero-row filter, so this never shows an empty subgroup header.
+      ? panel.rowSpec.filter(function(r){ var n=panel.nodesById[r.id]; return r.level===0 || !r.isLeaf || (n && n.fund===STATE.lcFund); })
+      : panel.rowSpec;
+
+    function isZeroish(v){ return v===null || v===undefined || isNaN(v) || Math.abs(v) < 0.005; }
+    var rowsComputed = rowSpec.map(function(r){
+      var vals = hospitals.map(function(h){ return valFor(panel, h.orgId, r.id); });
+      var medVals = groupHs.map(function(h){ return valFor(panel, h.orgId, r.id); });
+      return {r:r, vals:vals, med:median(medVals)};
+    // a line item that is 0 for every hospital currently shown carries no comparative information —
+    // drop it from view (the raw underlying data is untouched, this only affects what's rendered).
+    }).filter(function(rc){ return !rc.vals.every(isZeroish); });
+
+    var bodyRows = rowsComputed.map(function(rc){
+      var r = rc.r, vals = rc.vals, med = rc.med;
+      var rowType = r.level===0 ? 'grp-row' : (r.isLeaf ? 'sub-row' : 'mid-row');
+      var kindCls = r.kind==='expense'?'exp':(r.kind==='series3'?'s3':'rev');
+      var cellCls = r.kind==='expense'?'col-exp':(r.kind==='series3'?'col-3':'col-rev');
+      var pad = 10 + r.level*16;
+      var cells = hospitals.map(function(h,i){
+        var isHl = STATE.focus===h.orgId;
+        return '<td class="'+cellCls+(isHl?' hl-col':'')+'">'+thb(vals[i],dec)+'</td>';
+      }).join('');
+      return '<tr class="'+rowType+(r.level===0?' '+kindCls:'')+'" data-row="'+r.id+'">' +
+        '<td class="rowhead-col" style="padding-left:'+pad+'px" title="'+r.label+'">'+r.label+'</td>' +
+        '<td class="med-td">'+thb(med,dec)+'</td>' + cells + '</tr>';
+    }).join('');
+
+    if(!rowsComputed.length){
+      bodyRows = '<tr><td class="empty-note" colspan="'+(hospitals.length+2)+'">ทุกรายการเป็น 0 สำหรับกลุ่มที่เลือก</td></tr>';
+    }
+
+    table.innerHTML = thead+'<tbody>'+bodyRows+'</tbody>';
+
+    table.querySelector('.corner-btn').addEventListener('click', function(){
+      if(STATE.sortKey[panel.tabId]==='__NAME__') STATE.sortDir[panel.tabId] = -(STATE.sortDir[panel.tabId]||1);
+      else { STATE.sortKey[panel.tabId]='__NAME__'; STATE.sortDir[panel.tabId]=1; }
+      renderPanelTable(panel);
+    });
+    table.querySelectorAll('tbody tr[data-row]').forEach(function(tr){
+      var cell = tr.querySelector('td.rowhead-col');
+      cell.addEventListener('click', function(){
+        var rid = tr.dataset.row;
+        if(STATE.sortKey[panel.tabId]===rid) STATE.sortDir[panel.tabId]*=-1;
+        else { STATE.sortKey[panel.tabId]=rid; STATE.sortDir[panel.tabId]=-1; }
+        renderPanelTable(panel);
+      });
+    });
+    table.querySelectorAll('th.hosp-th').forEach(function(th, idx){
+      th.addEventListener('click', function(){
+        var h = hospitals[idx];
+        STATE.focus = (STATE.focus===h.orgId) ? "" : h.orgId;
+        syncFocusInput();
+        renderActiveTab();
+      });
+    });
+
+    document.getElementById('tableSub'+panel.tabId).textContent =
+      fmtPeriodLabel(STATE.period, panel)+fundSuffix(panel)+' • หน่วย: '+unitLabel(panel)+' • คลิกชื่อรายการ (ซ้าย) เพื่อจัดเรียงโรงพยาบาลตามรายการนั้น • คลิกชื่อโรงพยาบาลเพื่อเน้น/ปักหมุด • เลื่อนแนวนอนเพื่อดูทุกแห่ง';
+  }
+
+  function renderPanel(panel){
+    renderPanelKPIs(panel);
+    renderPanelChart(panel);
+    renderPanelTable(panel);
+  }
+
+  /* ---------- boot / controls ---------- */
+  function buildControls(){
+    var el = document.getElementById('app');
+    var tabsHtml = TABS.map(function(t){
+      return '<button class="tab" data-tab="'+t.id+'" role="tab" aria-selected="'+(t.id===STATE.tab)+'"><span class="n">'+t.id+'</span>'+t.label+'</button>';
+    }).join('');
+
+    var hospPickHtml =
+      '<details class="hosppick" id="hospPick"><summary id="hospPickSummary">เลือกโรงพยาบาล (0 แห่ง)</summary>' +
+        '<div class="hosppick-body">' +
+          '<input class="search" id="hospPickSearch" placeholder="ค้นหาชื่อ/รหัส/จังหวัด…" style="min-width:0;width:100%;">' +
+          '<div class="hosppick-actions"><button type="button" id="hpAll">เลือกที่กรองอยู่ทั้งหมด</button><button type="button" id="hpNone">ล้างทั้งหมด</button></div>' +
+          '<div class="hosppick-list" id="hospPickList"></div>' +
+        '</div>' +
+      '</details>';
+
+    el.innerHTML =
+      '<div class="panel">' +
+        '<div class="row">' +
+          '<div class="field"><label>โหมดเปรียบเทียบ</label>' +
+            '<div class="seg" id="filterModeSeg"><button data-v="filter" aria-pressed="true">ตามตัวกรอง</button><button data-v="manual" aria-pressed="false">เลือก รพ. เอง</button></div>' +
+          '</div>' +
+          '<div class="field w160" id="provinceField"><label>จังหวัด</label><select id="provinceSel"></select></div>' +
+          '<div class="field w160" id="levelField"><label>ขนาด (A–F3)</label><select id="levelSel"></select></div>' +
+          '<div class="field grow" id="groupField"><label>กลุ่มระดับบริการ (GroupName)</label><select id="groupSel"></select></div>' +
+          '<div class="field grow" id="manualField" hidden><label>เลือกโรงพยาบาล</label>'+hospPickHtml+'</div>' +
+          '<div class="field grow"><label>โฟกัส รพ. <span style="font-weight:400">(ปักหมุดไว้ซ้าย/บนสุด พร้อมกรอบ)</span></label><input class="search" list="hospDatalist" id="focusInput" placeholder="พิมพ์รหัสสถานบริการหรือชื่อ รพ." style="min-width:0;width:100%;"><datalist id="hospDatalist"></datalist></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label>ช่วงเวลา</label><select id="periodSel"></select></div>' +
+          '<div class="field"><label>มุมมองยอด</label>' +
+            '<div class="seg" id="metricSeg"><button data-v="ytd" aria-pressed="true">สะสมตั้งแต่ต้นปีงบ (YTD)</button><button data-v="month" aria-pressed="false">เฉพาะเดือนที่เลือก</button></div>' +
+          '</div>' +
+          '<div class="field"><label>ฐานตัวเลข</label>' +
+            '<div class="seg" id="basisSeg"><button data-v="raw" aria-pressed="true">ข้อมูลดิบ (บาท)</button><button data-v="percapita" aria-pressed="false">ต่อประชากร UC</button></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tabbar" role="tablist">'+tabsHtml+'</div>' +
+      '<div class="tabpanel" id="panel1"></div>' +
+      '<div class="tabpanel" id="panel2" hidden></div>' +
+      '<div class="tabpanel" id="panel3" hidden></div>' +
+      '<div class="tabpanel" id="panel4" hidden></div>' +
+      '<div class="tabpanel" id="panel5" hidden></div>' +
+      '<div class="tabpanel" id="panel6" hidden></div>' +
+      '<div class="tabpanel" id="panel7" hidden></div>' +
+      '<div class="tabpanel" id="panel8" hidden></div>' +
+      '<div class="tabpanel" id="panel9" hidden></div>';
+
+    document.getElementById('filterModeSeg').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      var newMode = b.dataset.v;
+      if(newMode==='manual' && Object.keys(STATE.manualSet).length===0){
+        cohortHospitals().forEach(function(h){ STATE.manualSet[h.orgId]=true; });
+        syncHospPick();
+      }
+      STATE.filterMode = newMode;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      document.getElementById('provinceField').hidden = newMode==='manual';
+      document.getElementById('levelField').hidden = newMode==='manual';
+      document.getElementById('groupField').hidden = newMode==='manual';
+      document.getElementById('manualField').hidden = newMode!=='manual';
+      renderActiveTab();
+    });
+
+    ['provinceSel','levelSel','groupSel'].forEach(function(id){
+      document.getElementById(id).addEventListener('change', function(){
+        STATE.province = document.getElementById('provinceSel').value;
+        STATE.level = document.getElementById('levelSel').value;
+        STATE.group = document.getElementById('groupSel').value;
+        populateFilterSelects();
+        renderActiveTab();
+      });
+    });
+
+    document.getElementById('metricSeg').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.metric=b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      renderActiveTab();
+    });
+    document.getElementById('basisSeg').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.basis=b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      renderActiveTab();
+    });
+
+    var periodSel = document.getElementById('periodSel');
+    DATA.periods.forEach(function(p){ var o=document.createElement('option'); o.value=p.key; o.textContent=p.label; periodSel.appendChild(o); });
+    periodSel.value = DATA.meta.latestPeriod; STATE.period = DATA.meta.latestPeriod;
+    periodSel.addEventListener('change', function(){ STATE.period=this.value; renderActiveTab(); });
+
+    document.querySelectorAll('.tab').forEach(function(btn){
+      btn.addEventListener('click', function(){ switchTab(parseInt(this.dataset.tab,10)); });
+    });
+
+    // focus/pin input
+    var focusInput = document.getElementById('focusInput');
+    var focusList = document.getElementById('hospDatalist');
+    focusList.innerHTML = DATA.hospitals.map(function(h){ return '<option value="'+h.name+' ('+h.orgId+')">'; }).join('');
+    function resolveFocusInput(val){
+      val = (val||'').trim();
+      if(!val){ STATE.focus=""; return true; }
+      var m = val.match(/\(([^)]+)\)\s*$/);
+      if(m && DATA.hospById[m[1]]){ STATE.focus=m[1]; return true; }
+      if(DATA.hospById[val]){ STATE.focus=val; return true; }
+      var exact = DATA.hospitals.filter(function(h){return h.name===val;});
+      if(exact.length===1){ STATE.focus=exact[0].orgId; return true; }
+      return false;
+    }
+    focusInput.addEventListener('input', function(){ if(this.value.trim()==='' ){ STATE.focus=""; renderActiveTab(); } });
+    focusInput.addEventListener('change', function(){ if(resolveFocusInput(this.value)) renderActiveTab(); });
+
+    // manual hospital picker
+    var hospPickList = document.getElementById('hospPickList');
+    hospPickList.innerHTML = DATA.hospitals.slice().sort(function(a,b){return a.name.localeCompare(b.name,'th');}).map(function(h){
+      return '<label data-name="'+(h.name+' '+h.orgId+' '+h.province).toLowerCase()+'"><input type="checkbox" value="'+h.orgId+'"><span>'+h.name+'</span><span class="prov">'+h.province+'</span></label>';
+    }).join('');
+    hospPickList.addEventListener('change', function(e){
+      var cb = e.target.closest('input[type=checkbox]'); if(!cb) return;
+      if(cb.checked) STATE.manualSet[cb.value]=true; else delete STATE.manualSet[cb.value];
+      updateHospPickSummary();
+      if(STATE.filterMode==='manual') renderActiveTab();
+    });
+    document.getElementById('hospPickSearch').addEventListener('input', function(){
+      var q = this.value.trim().toLowerCase();
+      hospPickList.querySelectorAll('label').forEach(function(lb){
+        lb.hidden = q!=='' && lb.dataset.name.indexOf(q)===-1;
+      });
+    });
+    document.getElementById('hpAll').addEventListener('click', function(){
+      hospPickList.querySelectorAll('label').forEach(function(lb){
+        if(lb.hidden) return;
+        var cb = lb.querySelector('input'); cb.checked=true; STATE.manualSet[cb.value]=true;
+      });
+      updateHospPickSummary();
+      if(STATE.filterMode==='manual') renderActiveTab();
+    });
+    document.getElementById('hpNone').addEventListener('click', function(){
+      hospPickList.querySelectorAll('label').forEach(function(lb){
+        if(lb.hidden) return;
+        var cb = lb.querySelector('input'); cb.checked=false; delete STATE.manualSet[cb.value];
+      });
+      updateHospPickSummary();
+      if(STATE.filterMode==='manual') renderActiveTab();
+    });
+
+    populateFilterSelects();
+    buildTabPanels();
+  }
+
+  function syncFocusInput(){
+    var el = document.getElementById('focusInput');
+    if(!el) return;
+    el.value = (STATE.focus && DATA.hospById[STATE.focus]) ? (DATA.hospById[STATE.focus].name+' ('+STATE.focus+')') : '';
+  }
+  function updateHospPickSummary(){
+    var n = Object.keys(STATE.manualSet).length;
+    var s = document.getElementById('hospPickSummary');
+    if(s) s.textContent = 'เลือกโรงพยาบาล ('+n+' แห่ง)';
+  }
+  function syncHospPick(){
+    document.querySelectorAll('#hospPickList input[type=checkbox]').forEach(function(cb){
+      cb.checked = !!STATE.manualSet[cb.value];
+    });
+    updateHospPickSummary();
+  }
+
+  // faceted counts: each select's option list reflects the OTHER two active filters, like the reference UI.
+  function populateFilterSelects(){
+    function subset(exclude){
+      return DATA.hospitals.filter(function(h){
+        return (exclude==='province'||!STATE.province||h.province===STATE.province) &&
+               (exclude==='level'||!STATE.level||h.level===STATE.level) &&
+               (exclude==='group'||!STATE.group||h.group===STATE.group);
+      });
+    }
+    function fill(id, dim, values, curVal, allLabel){
+      var base = subset(dim);
+      var sel = document.getElementById(id);
+      var html = '<option value="">'+allLabel+' ('+base.length+')</option>';
+      values.forEach(function(v){
+        var n = base.filter(function(h){ return (dim==='province'?h.province:dim==='level'?h.level:h.group)===v; }).length;
+        if(n>0) html += '<option value="'+v+'"'+(v===curVal?' selected':'')+'>'+v+' ('+n+')</option>';
+      });
+      sel.innerHTML = html;
+      sel.value = curVal;
+    }
+    fill('provinceSel','province', DATA.provinces, STATE.province, 'ทุกจังหวัด');
+    fill('levelSel','level', LEVELS.filter(function(l){return DATA.hospitals.some(function(h){return h.level===l;});}), STATE.level, 'ทุกขนาด');
+    fill('groupSel','group', DATA.groups, STATE.group, 'ทุกกลุ่ม');
+  }
+
+  function buildTabPanels(){
+    var qmLeaf = {};
+    DATA.qmCategories.forEach(function(c){ qmLeaf[c.id] = makeLeaf(c.id, c.label, c.kind, 'qm'); });
+
+    // Tab1 overview — qm categories (mixed rev+exp), 2 roots
+    var root1a = makeGroup('TOTAL_REV','รวมรายรับทั้งหมด','revenue', ['OPD','IPD','OthRev'].map(function(id){return qmLeaf[id];}));
+    var root1b = makeGroup('TOTAL_EXP','รวมรายจ่ายทั้งหมด','expense', ['LC','MC','CC','OthExp'].map(function(id){return qmLeaf[id];}));
+    PANELS[1] = finalizePanel(1,'mixed',[root1a,root1b]);
+    document.getElementById('panel1').innerHTML = buildPanelDom(1,
+      'เปรียบเทียบภาพรวม 7 หมวด Quick Method',
+      'แท่งคือแต่ละโรงพยาบาลในกลุ่มที่เลือก เส้นประคือค่ามัธยฐานของกลุ่ม');
+
+    // Tab2/Tab3 — OPD/IPD: total -> payer subtotal -> real Quick Method line items.
+    // Some OthRev "ส่วนต่างค่ารักษา..." (treatment-cost variance) items were reclassified
+    // into OPD/IPD in build_data2.py; REV_MERGES nests each of those back under its matching
+    // base revenue item as a "(รวม)" subgroup, per user request.
+    // Within payer OP-UC (บัตรทอง), the 4 REV_MERGES groups below are pushed in this dict's key
+    // order, per explicit user request for this exact display sequence: UC-OP ใน CUP (รวม) ->
+    // P&P (รวม) -> UC-OP บริการกรณีเฉพาะ (CR) (รวม) -> UC-OP นอก CUP ในจังหวัด (รวม).
+    var REV_MERGES = {
+      'IPD::4301020105.202': { label: 'รายได้ค่ารักษา UC - IP (รวม)',
+        members: ['IPD::4301020105.202','IPD::4301020105.232','IPD::4301020105.231','IPD::4301020105.265'] },
+      'IPD::4301020105.245': { label: 'รายได้ค่ารักษา UC - IP บริการกรณีเฉพาะ (CR) (รวม)',
+        members: ['IPD::4301020105.245','IPD::4301020105.252','IPD::4301020105.251'] },
+      'OPD::4301020106.709': { label: 'รายได้ค่ารักษา-บุคคลที่มีปัญหาสถานะและสิทธิ OP ใน CUP (รวม)',
+        members: ['OPD::4301020106.709','OPD::4301020106.711','OPD::4301020106.712','OPD::4301020106.704'] },
+      'OPD::4301020105.201': { label: 'รายได้ค่ารักษา UC -OP ใน CUP (รวม)',
+        members: ['OPD::4301020105.201','OPD::4301020105.214','OPD::4301020105.229','OPD::4301020105.264'] },
+      'OPD::4301020105.241': { label: 'รายได้ค่ารักษาด้านการสร้างเสริมสุขภาพและป้องกันโรค (P&P) (รวม)',
+        members: ['OPD::4301020105.241','OPD::4301020105.257','OPD::4301020105.217','OPD::4301020105.266'] },
+      'OPD::4301020105.244': { label: 'รายได้ค่ารักษา UC- OP บริการกรณีเฉพาะ (CR) (รวม)',
+        members: ['OPD::4301020105.244','OPD::4301020105.260','OPD::4301020105.258'] },
+      // Per explicit user request: this variance item used to fold into the expense-side "ค่ารักษา
+      // ตามจ่าย UC (ยอดจ่ายจริง)" composite (Tab6/8's PAYUC_IDS) — moved out of there and merged
+      // here instead. build_data2.py leaves it on its natural (strongly negative) revenue sign, so
+      // simply summing it as a member here nets this group down to the actual cash received.
+      'OPD::4301020105.203': { label: 'รายได้ค่ารักษา UC - OP นอก CUP ในจังหวัด (รวม)',
+        members: ['OPD::4301020105.203','OPD::4301020105.239'] },
+      'IPD::4301020104.402': { label: 'รายได้ค่ารักษาเบิกจ่ายตรงกรมบัญชีกลาง IP (รวม)',
+        members: ['IPD::4301020104.402','IPD::4301020104.406','IPD::4301020104.405'] },
+      'IPD::4301020106.504': { label: 'รายได้ค่ารักษาแรงงานต่างด้าว IP (รวม)',
+        members: ['IPD::4301020106.504','IPD::4301020106.514','IPD::4301020106.511','IPD::4301020106.510','IPD::4301020106.507'] },
+      'IPD::4301020106.710': { label: 'รายได้ค่ารักษาบุคคลที่มีปัญหาสถานะและสิทธิ - เบิกจากส่วนกลาง IP (รวม)',
+        members: ['IPD::4301020106.710','IPD::4301020106.705','IPD::4301020106.706'] },
+      'OPD::4301020106.503': { label: 'รายได้ค่ารักษาแรงงานต่างด้าว OP (รวม)',
+        members: ['OPD::4301020106.503','OPD::4301020106.519','OPD::4301020106.515','OPD::4301020106.505'] },
+      'IPD::4301020104.802': { label: 'รายได้ค่ารักษาเบิกจ่ายตรง-อปท. IP (รวม)',
+        members: ['IPD::4301020104.802','IPD::4301020104.804','IPD::4301020104.803'] },
+      'OPD::4301020106.305': { label: 'รายได้ค่ารักษาประกันสังคม OP-เครือข่าย (รวม)',
+        members: ['OPD::4301020106.305','OPD::4301020106.315'] },
+      'IPD::4301020104.806': { label: 'รายได้ค่ารักษาเบิกจ่ายตรง- อปท.รูปแบบพิเศษ IP (รวม)',
+        members: ['IPD::4301020104.806','IPD::4301020104.808','IPD::4301020104.807'] },
+      'IPD::4301020104.109': { label: 'รายได้ค่ารักษาเบิกจ่ายตรงหน่วยงานอื่น-IP (รวม)',
+        members: ['IPD::4301020104.109','IPD::4301020104.111','IPD::4301020104.110'] },
+      'IPD::4301020106.306': { label: 'รายได้ค่ารักษาประกันสังคม IP-เครือข่าย (รวม)',
+        members: ['IPD::4301020106.306','IPD::4301020106.317'] }
+    };
+    // Split the flat "ข้าราชการ/สิทธิเบิกจ่ายตรง (CS)" payer group into 2 labeled subgroups —
+    // items not listed here (e.g. รายได้ค่าตรวจสุขภาพ-หน่วยงานภาครัฐ) stay flat under CS.
+    var PAYER_SUBGROUPS = {
+      OPD: {
+        'OP-CS': [
+          { id: 'GRP_CS_DIRECT', label: 'ข้าราชการเบิกได้จ่ายตรง (CS)', members: ['OPD::4301020104.401','OPD::4301020104.108'] },
+          { id: 'GRP_CS_LGO', label: 'ข้าราชการเบิกได้ อปท. (LGO)', members: ['OPD::4301020104.801','OPD::4301020104.805'] }
+        ]
+      }
+    };
+    function buildBucketByPayer(bucket){
+      var itemsById = {};
+      (DATA.subItems[bucket]||[]).forEach(function(it){ itemsById[it.id] = it; });
+      var consumed = {};
+      var byPayer = {};
+      function pushLeaf(payer, node){ (byPayer[payer] = byPayer[payer]||[]).push(node); }
+      Object.keys(REV_MERGES).forEach(function(anchorId){
+        var anchorItem = itemsById[anchorId];
+        if(!anchorItem) return; // merge target not in this bucket
+        var cfg = REV_MERGES[anchorId];
+        var memberLeaves = cfg.members.filter(function(mid){ return itemsById[mid]; }).map(function(mid){
+          var mi = itemsById[mid];
+          consumed[mid] = true;
+          return makeLeaf(mi.id, mi.label, 'revenue', 'sub');
+        });
+        pushLeaf(anchorItem.payer, makeGroup(anchorId+'::GRP', cfg.label, 'revenue', memberLeaves));
+      });
+      // subgroup member id -> which subgroup config it belongs to (payer + index), built up front
+      var subgroupOf = {};
+      var subgroupsByPayer = PAYER_SUBGROUPS[bucket] || {};
+      Object.keys(subgroupsByPayer).forEach(function(payer){
+        subgroupsByPayer[payer].forEach(function(sg, idx){
+          sg.members.forEach(function(mid){ subgroupOf[mid] = {payer: payer, idx: idx}; });
+        });
+      });
+      var subgroupLeaves = {}; // payer -> idx -> [leaf nodes]
+      (DATA.subItems[bucket]||[]).forEach(function(it){
+        if(consumed[it.id]) return;
+        var sg = subgroupOf[it.id];
+        if(sg && sg.payer === it.payer){
+          consumed[it.id] = true;
+          subgroupLeaves[sg.payer] = subgroupLeaves[sg.payer] || {};
+          (subgroupLeaves[sg.payer][sg.idx] = subgroupLeaves[sg.payer][sg.idx] || []).push(makeLeaf(it.id, it.label, 'revenue', 'sub'));
+          return;
+        }
+        pushLeaf(it.payer, makeLeaf(it.id, it.label, 'revenue', 'sub'));
+      });
+      Object.keys(subgroupsByPayer).forEach(function(payer){
+        var sgNodes = [];
+        subgroupsByPayer[payer].forEach(function(sg, idx){
+          var leaves = (subgroupLeaves[payer] && subgroupLeaves[payer][idx]) || [];
+          if(!leaves.length) return;
+          sgNodes.push(makeGroup(sg.id, sg.label, 'revenue', leaves));
+        });
+        if(sgNodes.length){ byPayer[payer] = sgNodes.concat(byPayer[payer]||[]); }
+      });
+      return DATA.payerTypes.filter(function(p){return p.bucket===bucket;}).map(function(p){
+        return makeGroup(p.id, p.label, 'revenue', byPayer[p.id]||[]);
+      });
+    }
+    var opdPayerNodes = buildBucketByPayer('OPD');
+    var rootOPD = makeGroup('TOTAL_OPD','รวมรายได้ OPD ทุกสิทธิ','revenue', opdPayerNodes, 'แยกตามสิทธิการรักษา (OPD)');
+    PANELS[2] = finalizePanel(2,'revenue',[rootOPD]);
+    document.getElementById('panel2').innerHTML = buildPanelDom(2,
+      'รายได้ผู้ป่วยนอก (OPD) แยกตามสิทธิการรักษา และรายการจริงในตาราง Quick Method',
+      'คลิกแถวสิทธิ (เช่น บัตรทอง/ประกันสังคม) เพื่อดูรายการย่อยแท้จริงที่ถูกรวมเป็นยอดนั้น');
+
+    // Tab3 — IPD only, same shape
+    var ipdPayerNodes = buildBucketByPayer('IPD');
+    var rootIPD = makeGroup('TOTAL_IPD','รวมรายได้ IPD ทุกสิทธิ','revenue', ipdPayerNodes, 'แยกตามสิทธิการรักษา (IPD)');
+    PANELS[3] = finalizePanel(3,'revenue',[rootIPD]);
+    document.getElementById('panel3').innerHTML = buildPanelDom(3,
+      'รายได้ผู้ป่วยใน (IPD) แยกตามสิทธิการรักษา และรายการจริงในตาราง Quick Method',
+      'คลิกแถวสิทธิ (เช่น บัตรทอง/ประกันสังคม) เพื่อดูรายการย่อยแท้จริงที่ถูกรวมเป็นยอดนั้น');
+
+    // Tab4 — Labor Cost, filterable by fund source (เงินบำรุง / เงินงบประมาณ). Most items are grouped
+    // into named subcategories per user request (some nested 2 levels deep); anything not listed
+    // stays flat at the top level.
+    var LC_SUBGROUPS = [
+      { id: 'LC_PERM', label: 'ค่าจ้างประจำ', members: [
+          'LC::5101010113.105','LC::5101010113.106','LC::5101010113.103','LC::5101010113.104',
+          'LC::5101010113.101','LC::5101010113.102',
+          'LC::5101010101.101','LC::5101010101.102','LC::5101010103.102','LC::5101010115.102',
+          'LC::5101010199.101','LC::5101010103.103','LC::5101010115.101','LC::5101010109.102',
+          'LC::5101010109.104','LC::5101010109.103',
+          'LC::5101010109.101','LC::5101010103.101','LC::5101010199.102'
+        ] },
+      { id: 'LC_COMP_OT', label: 'ค่าตอบแทน/โอที', members: [
+          'LC::5104040102.104','LC::5104040102.105','LC::5101010199.103','LC::5104040102.106',
+          'LC::5101010108.101'
+        ] },
+      { id: 'LC_OUTSOURCE', label: 'ค่าจ้างเหมา', members: [
+          'LC::5101010113.107','LC::5101010113.108'
+        ] },
+      { id: 'LC_COMP_CHOR', label: 'ค่าตอบแทน ฉ.11/ฉ.12/เงินไม่ทำเวช', children: [
+          { id: 'LC_COMP_CHOR_1112', label: 'ค่าตอบแทน ฉ.11/ฉ.12', members: [
+              'LC::5104040102.113','LC::5104040102.117','LC::5104040102.114','LC::5104040102.118',
+              'LC::5104040102.111',
+              'LC::5104040102.115','LC::5104040102.116','LC::5104040102.112','LC::5104040102.119'
+            ] },
+          { id: 'LC_COMP_CHOR_NOCLINIC', label: 'ค่าเงินไม่ทำเวช', members: [
+              'LC::5104040102.101','LC::5104040102.102','LC::5104040102.103'
+            ] }
+        ] },
+      { id: 'LC_COMP_OTHER', label: 'ค่าตอบแทนอื่น', members: [
+          'LC::5104040102.120','LC::5104040102.109','LC::5104040102.108','LC::5104040102.110',
+          'LC::5101020114.114','LC::5101020114.107',
+          'LC::5104040102.107'
+        ] },
+      { id: 'LC_OTHER_PERSONNEL', label: 'ค่าใช้จ่ายอื่นด้านบุคลากร', members: [
+          'LC::5102010106.101','LC::5103010103.102','LC::5101020199.106','LC::5101020101.102',
+          'LC::5101020116.102','LC::5103010102.102','LC::5102030199.102','LC::5103010199.102',
+          'LC::5101020106.102','LC::5102010199.102','LC::5101020112.101',
+          'LC::5101020104.101','LC::5101020103.101','LC::5101030205.101','LC::5101020105.101',
+          'LC::5101030207.101',
+          'LC::5101030101.101','LC::5101010116.101','LC::5101020106.101','LC::5101030206.101',
+          'LC::5101030208.101','LC::5102010199.101','LC::5101020108.101','LC::5102030199.101',
+          'LC::5101020101.101','LC::5101020116.101','LC::5101020114.127','LC::5103010199.101',
+          'LC::5103010102.101','LC::5101010116.105','LC::5101030211.101','LC::5103010103.101'
+        ] }
+    ];
+    var lcById = {}; (DATA.subItems.LC||[]).forEach(function(it){ lcById[it.id] = it; });
+    var lcConsumed = {};
+    function buildLcNode(def){
+      if(def.members){
+        var leaves = def.members.filter(function(mid){ return lcById[mid]; }).map(function(mid){
+          var it = lcById[mid];
+          lcConsumed[mid] = true;
+          return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund);
+        });
+        return leaves.length ? makeGroup(def.id, def.label, 'expense', leaves) : null;
+      }
+      if(def.children){
+        var kids = def.children.map(buildLcNode).filter(function(k){ return k; });
+        return kids.length ? makeGroup(def.id, def.label, 'expense', kids) : null;
+      }
+      return null;
+    }
+    var lcGroupNodes = LC_SUBGROUPS.map(buildLcNode).filter(function(n){ return n; });
+    var lcFlat = (DATA.subItems.LC||[]).filter(function(it){ return !lcConsumed[it.id]; })
+      .map(function(it){ return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund); });
+    var lcKids = lcGroupNodes.concat(lcFlat);
+    var rootLC = makeGroup('TOTAL_LC','รวมต้นทุนแรงงาน (LC)','expense', lcKids, 'รายการย่อยใน Labor Cost (ตามตาราง Quick Method จริง)');
+    PANELS[4] = finalizePanel(4,'expense',[rootLC]);
+    PANELS[4].fundFilterable = true;
+    var fundSegHtml = '<div class="field"><label>แหล่งเงิน</label><div class="seg" id="fundSeg4">' +
+      '<button data-v="all" aria-pressed="true">ทั้งหมด</button>' +
+      '<button data-v="self" aria-pressed="false">เงินบำรุง</button>' +
+      '<button data-v="budget" aria-pressed="false">เงินงบประมาณ</button>' +
+      '</div></div>';
+    document.getElementById('panel4').innerHTML = buildPanelDom(4,
+      'ต้นทุนแรงงาน (Labor Cost)', 'ค่าใช้จ่ายบุคลากร แยกเป็นรายการจริงตามตาราง Quick Method ('+(DATA.subItems.LC||[]).length+' รายการ)',
+      fundSegHtml);
+    document.getElementById('fundSeg4').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.lcFund = b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      buildCatSelect(PANELS[4]);
+      renderPanel(PANELS[4]);
+    });
+
+    // Tab5 — Material Cost. Mostly flat real-leaf items, except "วัสดุวิทยาศาสตร์และการแพทย์ใช้ไป" and
+    // "ค่าจ้างตรวจทางห้องปฏิบัติการ (Lab)" which are merged into one sub-group with those two as its
+    // own line items (requested so the two related costs read together instead of as separate rows).
+    var MC_MERGE_IDS = {'MC::5104030205.104':true, 'MC::5104010112.114':true};
+    var mcKids = [], mcMergeInserted = false;
+    (DATA.subItems.MC||[]).forEach(function(it){
+      if(MC_MERGE_IDS[it.id]){
+        if(!mcMergeInserted){
+          var mergeLeaves = (DATA.subItems.MC||[]).filter(function(x){return MC_MERGE_IDS[x.id];})
+            .map(function(x){ return makeLeaf(x.id, x.label, 'expense', 'sub'); });
+          mcKids.push(makeGroup('MC_LABSCI','วัสดุวิทยาศาสตร์การแพทย์ + ค่าตรวจ Lab','expense', mergeLeaves));
+          mcMergeInserted = true;
+        }
+        return;
+      }
+      mcKids.push(makeLeaf(it.id, it.label, 'expense', 'sub'));
+    });
+    // Group the "ใช้ไป" consumable-cost items (plus the Lab merge group above) under one
+    // "ต้นทุนบริการ (เฉพาะรายการที่ใช้ไป)" subgroup, per user request.
+    var COST_OF_SERVICE_IDS = {
+      'MC::5104030205.101': true, 'MC::5104030205.102': true, 'MC::5104030205.103': true,
+      'MC::5104030205.112': true, 'MC::5104030205.113': true, 'MC::5104030205.117': true,
+      'MC::5104030205.118': true, 'MC_LABSCI': true
+    };
+    // Two more named subgroups, per user request: outsourced-service contracts, and another batch of
+    // "ใช้ไป" consumable-cost items distinct from the MC_COS set above.
+    var MC_OUTSOURCE_IDS = {
+      'MC::5104010112.112': true, 'MC::5104010112.113': true, 'MC::5104010112.115': true,
+      'MC::5104010112.101': true, 'MC::5104010112.103': true, 'MC::5104010112.111': true,
+      'MC::5104010112.108': true, 'MC::5104010107.112': true, 'MC::5104010107.110': true,
+      'MC::5104010107.113': true, 'MC::5104010107.111': true
+    };
+    var MC_OTHER_COS_IDS = {
+      'MC::5104010104.106': true, 'MC::5104010104.101': true, 'MC::5104010104.105': true,
+      'MC::5104010104.103': true, 'MC::5104010104.108': true, 'MC::5104010104.107': true,
+      'MC::5104010104.102': true, 'MC::5104010104.104': true
+    };
+    // Three more named subgroups, per user request: repair/maintenance costs, other miscellaneous
+    // expenses, and utilities.
+    var MC_REPAIR_IDS = {
+      'MC::5104010107.106': true, 'MC::5104010107.101': true, 'MC::5104010107.103': true,
+      'MC::5104010107.102': true, 'MC::5104010107.108': true, 'MC::5104010107.104': true,
+      'MC::5104010107.107': true, 'MC::5104010107.105': true, 'MC::5104030299.204': true
+    };
+    var MC_OTHER_EXP_IDS = {
+      'MC::5104030299.103': true, 'MC::5104030299.104': true, 'MC::5104030207.101': true,
+      'MC::5104010115.101': true, 'MC::5104030208.101': true, 'MC::5104010114.101': true,
+      'MC::5104030219.101': true, 'MC::5104030203.101': true,
+      'MC::5212010199.105': true, 'MC::5104030299.105': true, 'MC::5104030299.102': true
+    };
+    var MC_UTILITY_IDS = {
+      'MC::5104020101.101': true, 'MC::5104020103.101': true, 'MC::5104020106.101': true,
+      'MC::5104020105.101': true
+    };
+    var cosKids = [], outsourceKids = [], otherCosKids = [], repairKids = [], otherExpKids = [],
+      utilityKids = [], mcFlatById = {};
+    mcKids.forEach(function(node){
+      if(COST_OF_SERVICE_IDS[node.id]) cosKids.push(node);
+      else if(MC_OUTSOURCE_IDS[node.id]) outsourceKids.push(node);
+      else if(MC_OTHER_COS_IDS[node.id]) otherCosKids.push(node);
+      else if(MC_REPAIR_IDS[node.id]) repairKids.push(node);
+      else if(MC_OTHER_EXP_IDS[node.id]) otherExpKids.push(node);
+      else if(MC_UTILITY_IDS[node.id]) utilityKids.push(node);
+      else mcFlatById[node.id] = node;
+    });
+    var mcGroupById = {};
+    if(cosKids.length) mcGroupById.MC_COS = makeGroup('MC_COS','ต้นทุนบริการ (เฉพาะรายการที่ใช้ไป)','expense', cosKids);
+    if(otherCosKids.length) mcGroupById.MC_OTHER_COS = makeGroup('MC_OTHER_COS','ต้นทุนบริการอื่น (ที่ใช้ไป)','expense', otherCosKids);
+    if(outsourceKids.length) mcGroupById.MC_OUTSOURCE = makeGroup('MC_OUTSOURCE','ค่าจ้างเหมาบริการ','expense', outsourceKids);
+    if(utilityKids.length) mcGroupById.MC_UTILITY = makeGroup('MC_UTILITY','ค่าสาธารณูปโภค','expense', utilityKids);
+    if(repairKids.length) mcGroupById.MC_REPAIR = makeGroup('MC_REPAIR','ค่าซ่อมแซม','expense', repairKids);
+    if(otherExpKids.length) mcGroupById.MC_OTHER_EXP = makeGroup('MC_OTHER_EXP','ค่าใช้จ่ายอื่น','expense', otherExpKids);
+    // Explicit top-level ordering, per user request: the 5 named groups above, then 4 standalone
+    // items in the order given, then the "ค่าใช้จ่ายอื่น" group, then whatever else is left over,
+    // sorted by regional YTD total (largest first — computed once from the underlying data).
+    var MC_ORDER = [
+      'MC_COS', 'MC_OTHER_COS', 'MC_OUTSOURCE', 'MC_UTILITY', 'MC_REPAIR',
+      'MC::5104030212.101', // ค่าเช่าเบ็ดเตล็ด
+      'MC::5104010110.101', // ค่าเชื้อเพลิง
+      'MC::5104030206.101', // ค่าครุภัณฑ์มูลค่าต่ำกว่าเกณฑ์
+      'MC::5104020107.101', // ค่าไปรษณีย์และขนส่ง
+      'MC_OTHER_EXP',
+      'MC::5104010112.110', // ค่าจ้างเหมาซักรีด
+      'MC::5104010104.109', // สินค้าใช้ไป
+      'MC::5104010107.109', // ค่าจ้างเหมาบำรุงรักษาดูแลลิฟท์
+      'MC::5104030220.101', // ค่าชดใช้ค่าเสียหาย
+      'MC::5104010112.106', // ค่าจ้างเหมารถ
+      'MC::5104030210.101', // ค่าเช่าอสังหาริมทรัพย์
+      'MC::5104030202.101'  // ค่าจ้างที่ปรึกษา
+    ];
+    mcKids = MC_ORDER.map(function(id){ return mcGroupById[id] || mcFlatById[id]; }).filter(function(n){ return n; });
+    var mcLeafCount = (DATA.subItems.MC||[]).length;
+    var rootMC = makeGroup('TOTAL_MC','รวมต้นทุนวัสดุ (MC)','expense', mcKids, 'รายการย่อยใน Material Cost (ตามตาราง Quick Method จริง)');
+    PANELS[5] = finalizePanel(5,'expense',[rootMC]);
+    document.getElementById('panel5').innerHTML = buildPanelDom(5,
+      'ต้นทุนวัสดุ (Material Cost)', 'ค่าวัสดุ ค่าใช้สอย และค่าสาธารณูปโภค แยกเป็นรายการจริงตามตาราง Quick Method ('+mcLeafCount+' รายการ)');
+
+    // Tab6 — OthRev, flat real-leaf items, plus one expense composite line:
+    // "ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)" = the genuine OthExp line 5104030299.202 + 2 revenue-coded
+    // variance items reclassified/sign-flipped to OthExp in build_data2.py, per user request that
+    // this whole group read as an actual expense figure.
+    // Explicit ordering, per user request: 6 named items first (in the order given), then
+    // everything else sorted by regional YTD total (largest first — computed once from the
+    // underlying data).
+    var OTHREV_ORDER = [
+      'OthRev::4302030101.101', // รายได้จากการรับบริจาค-เงินสดและรายการเทียบเท่าเงินสด
+      'OthRev::4302030101.102', // รายได้จากการรับบริจาค-สินทรัพย์อื่น
+      'OthRev::4313010199.105', // รายได้ค่าใบรับรองแพทย์
+      'OthRev::4303010101.101', // รายได้ดอกเบี้ยจากสถาบันการเงิน
+      'OthRev::4313010199.110', // รายได้ลักษณะอื่น
+      'OthRev::4301020102.106', // รายได้สนับสนุนยาและอื่น ๆ
+      'OthRev::4308010101.101','OthRev::4307010103.201','OthRev::4308010105.101','OthRev::4307010104.101',
+      'OthRev::4307010108.101','OthRev::4302020199.101','OthRev::4313010199.119','OthRev::4307010105.101',
+      'OthRev::4313010199.117','OthRev::4313010199.116','OthRev::4313010199.118','OthRev::4307010106.101',
+      'OthRev::4302010199.101','OthRev::4301020102.103','OthRev::4313010199.122','OthRev::4313010199.108',
+      'OthRev::4313010199.113','OthRev::4308010121.101','OthRev::4301020106.320','OthRev::4301020106.321',
+      'OthRev::4313010103.101','OthRev::4302010106.101','OthRev::4301010102.103','OthRev::4313010199.101',
+      'OthRev::4301020106.322','OthRev::4201020106.101','OthRev::4313010199.109','OthRev::4301010102.101',
+      'OthRev::4313010199.115','OthRev::4313010199.114','OthRev::4306010110.101','OthRev::4313010199.102',
+      'OthRev::4206010102.101','OthRev::4301020102.101','OthRev::4313010199.120',
+      'OthRev::4301020106.518','OthRev::4308010118.101','OthRev::4302010101.101','OthRev::4301030104.101',
+      'OthRev::4203010101.101','OthRev::4301010102.104','OthRev::4205010110.101','OthRev::4313010199.121',
+      'OthRev::4201020199.101','OthRev::4313010101.101','OthRev::4202030105.101','OthRev::4301020108.101',
+      'OthRev::4202010199.101','OthRev::4306010110.102','OthRev::4302020107.101','OthRev::4301020106.502',
+      'OthRev::4202020102.101','OthRev::4301030102.101','OthRev::4301010102.102','OthRev::4206010199.101',
+      'OthRev::4306010104.101','OthRev::4205010104.101','OthRev::4307010107.101','OthRev::4302040101.101',
+      'OthRev::4313010199.123','OthRev::4301020106.319'
+    ];
+    var orById = {}; (DATA.subItems.OthRev||[]).forEach(function(it){ orById[it.id] = it; });
+    var orLeaves = OTHREV_ORDER.filter(function(id){ return orById[id]; }).map(function(id){
+      var it = orById[id];
+      return makeLeaf(it.id, it.label, 'revenue', 'sub');
+    });
+    var rootOR = makeGroup('TOTAL_OTHREV','รวมรายได้อื่น (OthRev)','revenue', orLeaves, 'รายการย่อยในรายได้อื่น (ตามตาราง Quick Method จริง)');
+
+    // '4301020105.239' moved OUT of this composite per explicit user request — it now merges into
+    // OPD's "รายได้ค่ารักษา UC - OP นอก CUP ในจังหวัด (รวม)" instead (see REV_MERGES above).
+    var PAYUC_IDS = ['OthExp::5104030299.202','OthExp::4301020105.271','OthExp::4301020105.240'];
+    var oeById = {}; (DATA.subItems.OthExp||[]).forEach(function(it){ oeById[it.id] = it; });
+    var payUcLeaves = PAYUC_IDS.filter(function(id){ return oeById[id]; }).map(function(id){
+      var it = oeById[id];
+      return makeLeaf(it.id, it.label, 'expense', 'sub');
+    });
+    var rootPayUC = makeGroup('TOTAL_PAYUC','ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)','expense', payUcLeaves,
+      'ยอดสุทธิ: ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. รวมกับส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงตามจ่าย UC OP (2 รายการ)');
+
+    // "ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)" listed first, per user request.
+    PANELS[6] = finalizePanel(6,'mixed',[rootPayUC, rootOR]);
+    document.getElementById('panel6').innerHTML = buildPanelDom(6,
+      'รายได้อื่น (OthRev)', 'รายได้ที่ไม่ใช่ค่ารักษาพยาบาลโดยตรง แยกเป็นรายการจริงตามตาราง Quick Method ('+orLeaves.length+' รายการ) — รวมยอด "ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)" ที่แสดงเป็นค่าใช้จ่าย');
+
+    // Tab7 — "รายได้ที่รับสม่ำเสมอ (ไม่รวมเหมาจ่าย)", per user request: OPD revenue + IPD revenue,
+    // excluding 9 named UC capitation/earmarked-fund categories + the entire "ไร้รัฐ/ไร้สัญชาติ"
+    // payer group from OPD (all under payer OP-UC except the payer-group exclusion), plus 2 OthRev
+    // items added back in (ค่าใบรับรองแพทย์ + เงินบริจาค-เงินสด). Reuses opdPayerNodes/ipdPayerNodes/
+    // orById (built above for Tab2/Tab3/Tab6) read-only: filtering with .filter() produces new
+    // arrays/groups without mutating the objects those tabs' own trees still use, so their totals
+    // are provably unaffected.
+    var EXCLUDE_REG_PAYER = { 'OP-ไร้รัฐ': true }; // ไร้รัฐ/ไร้สัญชาติ — whole OPD payer group excluded
+    var EXCLUDE_REG_IDS = {
+      'OPD::4301020105.201::GRP': true, // รายได้ค่ารักษา UC -OP ใน CUP (รวม)
+      'OPD::4301020105.241::GRP': true, // รายได้ค่ารักษาด้านการสร้างเสริมสุขภาพและป้องกันโรค (P&P) (รวม)
+      'OPD::4301020106.709::GRP': true, // รายได้ค่ารักษา-บุคคลที่มีปัญหาสถานะและสิทธิ OP ใน CUP (รวม)
+      'OPD::4301020105.243': true,      // รายได้กองทุน UC (CF)
+      'OPD::4301020105.203::GRP': true, // รายได้ค่ารักษา UC - OP นอก CUP ในจังหวัด (รวม) — now a REV_MERGES group
+      'OPD::4301020105.242': true,      // รายได้กองทุน UC-บริการพื้นที่เฉพาะ
+      'OPD::4301020105.207': true,      // รายได้ค่ารักษา UC-OP นอกสังกัด สป.
+      'OPD::4301020105.205': true,      // รายได้ค่ารักษา UC-OP นอก CUP ต่างจังหวัด
+      'OPD::4301020105.211': true       // รายได้กองทุน UC (งบลงทุน)
+    };
+    var opdPayerNodesReg = opdPayerNodes
+      .filter(function(payerNode){ return !EXCLUDE_REG_PAYER[payerNode.id]; })
+      .map(function(payerNode){
+        var filteredKids = payerNode.kids.filter(function(k){ return !EXCLUDE_REG_IDS[k.id]; });
+        return makeGroup(payerNode.id, payerNode.label, 'revenue', filteredKids);
+      });
+    var rootRegOPD = makeGroup('REG_OPD','รายได้ OPD (ไม่รวมเหมาจ่าย)','revenue', opdPayerNodesReg);
+    var rootRegIPD = makeGroup('REG_IPD','รายได้ IPD','revenue', ipdPayerNodes);
+    var REG_OTHREV_IDS = ['OthRev::4313010199.105','OthRev::4302030101.101'];
+    var regOthRevLeaves = REG_OTHREV_IDS.filter(function(id){ return orById[id]; }).map(function(id){
+      var it = orById[id];
+      return makeLeaf(it.id, it.label, 'revenue', 'sub');
+    });
+    var rootRegOthRev = makeGroup('REG_OTHREV','รายได้อื่นที่นับรวมด้วย','revenue', regOthRevLeaves);
+    var rootRegular = makeGroup('TOTAL_REGULAR','รวมรายได้ที่รับสม่ำเสมอ (ไม่รวมเหมาจ่าย)','revenue',
+      [rootRegOPD, rootRegIPD, rootRegOthRev],
+      'รายได้ OPD รวมกับ IPD ไม่รวม 9 รายการ (UC-OP ใน CUP (รวม), P&P (รวม), กองทุน UC (CF), UC-OP นอก CUP ในจังหวัด, กองทุน UC-บริการพื้นที่เฉพาะ, บุคคลที่มีปัญหาสถานะและสิทธิ OP ใน CUP (รวม), UC-OP นอกสังกัด สป., UC-OP นอก CUP ต่างจังหวัด, กองทุน UC (งบลงทุน)) และไม่รวมสิทธิไร้รัฐ/ไร้สัญชาติทั้งหมด — บวกกลับด้วยรายได้ค่าใบรับรองแพทย์ และรายได้จากการรับบริจาค-เงินสดฯ');
+    PANELS[7] = finalizePanel(7,'revenue',[rootRegular]);
+    PANELS[7].avgToggle = true;
+    var avgSegHtml7 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg7">' +
+      '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
+      '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
+      '</div></div>';
+    document.getElementById('panel7').innerHTML = buildPanelDom(7,
+      'รายได้ที่รับสม่ำเสมอ (ไม่รวมเหมาจ่าย)',
+      'รายได้ OPD + IPD ไม่รวมรายการเหมาจ่าย/กองทุนเฉพาะ 6 รายการ — กด "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน หรือดูยอดรวมที่การ์ดด้านบน',
+      avgSegHtml7);
+    document.getElementById('avgSeg7').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.avgView[7] = b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      renderPanel(PANELS[7]);
+    });
+
+    // Tab8 — recurring cash outlay actually paid from เงินบำรุง (self-funded) each month, per user
+    // request: Labor Cost items tagged fund='self' + all of Material Cost + the "ค่ารักษาตามจ่าย UC
+    // (ยอดจ่ายจริง)" composite. Reuses the exact same MC (rootMC, Tab5) and PayUC (rootPayUC, Tab6)
+    // tree nodes built above, so these totals always match those tabs exactly — nothing here is
+    // computed separately and no risk of drifting out of sync. Use the "เฉพาะเดือนที่เลือก" /
+    // "สะสมตั้งแต่ต้นปีงบ (YTD)" toggle above and the ช่วงเวลา dropdown to see any single month.
+    var lcSelfLeaves = (DATA.subItems.LC||[]).filter(function(it){ return it.fund==='self'; })
+      .map(function(it){ return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund); });
+    var rootLCSelf = makeGroup('REC_LC_SELF','ต้นทุนแรงงาน (Labor Cost) — เฉพาะเงินบำรุง','expense', lcSelfLeaves);
+    var rootRecurring = makeGroup('TOTAL_RECURRING','รวมรายจ่ายประจำที่ต้องจ่ายจริง (เงินบำรุง)','expense',
+      [rootLCSelf, rootMC, rootPayUC],
+      'ต้นทุนแรงงาน (เฉพาะเงินบำรุง) + รายจ่าย Material Cost (ทั้งหมด) + ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)');
+    PANELS[8] = finalizePanel(8,'expense',[rootRecurring]);
+    PANELS[8].avgToggle = true;
+    var avgSegHtml8 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg8">' +
+      '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
+      '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
+      '</div></div>';
+    document.getElementById('panel8').innerHTML = buildPanelDom(8,
+      'สรุปรายจ่ายประจำที่ต้องจ่ายจริง (เงินบำรุง)',
+      'ต้นทุนแรงงานเฉพาะที่จ่ายจากเงินบำรุง ('+lcSelfLeaves.length+' รายการ) + รายจ่าย Material Cost ทั้งหมด + ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง) — สลับ "เฉพาะเดือนที่เลือก" ที่ตัวกรองด้านบนเพื่อดูยอดรายเดือน หรือกด "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน',
+      avgSegHtml8);
+    document.getElementById('avgSeg8').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.avgView[8] = b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      renderPanel(PANELS[8]);
+    });
+
+    // Tab9 — "สรุปรายจ่ายค่าตอบแทน ฉ.11/ฉ.12", per user request: break down the existing ค่าตอบแทน
+    // ฉ.11/ฉ.12 LC subgroup (9 real leaf items) by fund source (เงินบำรุง vs เงินงบประมาณ), with a
+    // percentage split, a grand total, and the same "หารเฉลี่ยรายเดือน" option as Tab8.
+    var CHOR1112_IDS = [
+      'LC::5104040102.113','LC::5104040102.117','LC::5104040102.114','LC::5104040102.118',
+      'LC::5104040102.111','LC::5104040102.115','LC::5104040102.116','LC::5104040102.112',
+      'LC::5104040102.119'
+    ];
+    var lcById9 = {}; (DATA.subItems.LC||[]).forEach(function(it){ lcById9[it.id] = it; });
+    var chor1112Leaves = CHOR1112_IDS.filter(function(id){ return lcById9[id]; }).map(function(id){
+      var it = lcById9[id];
+      return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund);
+    });
+    var rootChor1112 = makeGroup('TOTAL_CHOR1112','รวมค่าตอบแทน ฉ.11/ฉ.12','expense', chor1112Leaves,
+      'ค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ/ตามผลการปฏิบัติงาน ตามระเบียบ ฉ.11/ฉ.12 ('+chor1112Leaves.length+' รายการ) แยกตามแหล่งเงิน');
+    PANELS[9] = finalizePanel(9,'expense',[rootChor1112]);
+    PANELS[9].fundFilterable = true;
+    PANELS[9].avgToggle = true;
+    PANELS[9].fundBreakdown = true;
+    var fundSegHtml9 = '<div class="field"><label>แหล่งเงิน</label><div class="seg" id="fundSeg9">' +
+      '<button data-v="all" aria-pressed="true">ทั้งหมด</button>' +
+      '<button data-v="self" aria-pressed="false">เงินบำรุง</button>' +
+      '<button data-v="budget" aria-pressed="false">เงินงบประมาณ</button>' +
+      '</div></div>';
+    var avgSegHtml9 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg9">' +
+      '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
+      '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
+      '</div></div>';
+    document.getElementById('panel9').innerHTML = buildPanelDom(9,
+      'สรุปรายจ่ายค่าตอบแทน ฉ.11/ฉ.12',
+      'ค่าตอบแทน ฉ.11/ฉ.12 ('+chor1112Leaves.length+' รายการ) แบ่งเป็นจ่ายจากเงินบำรุง/เงินงบประมาณ พร้อมสัดส่วน % และยอดรวม — ใช้ตัวกรอง "แหล่งเงิน" เพื่อดูเฉพาะกลุ่ม หรือ "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน',
+      fundSegHtml9 + avgSegHtml9);
+    document.getElementById('fundSeg9').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.lcFund = b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      buildCatSelect(PANELS[9]);
+      renderPanel(PANELS[9]);
+    });
+    document.getElementById('avgSeg9').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.avgView[9] = b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      renderPanel(PANELS[9]);
+    });
+
+    [1,2,3,4,5,6,7,8,9].forEach(function(t){ initPanel(PANELS[t]); });
+  }
+
+  function switchTab(id){
+    STATE.tab = id;
+    document.querySelectorAll('.tab').forEach(function(b){ b.setAttribute('aria-selected', String(parseInt(b.dataset.tab,10)===id)); });
+    for(var i=1;i<=9;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
+    renderActiveTab();
+  }
+
+  function renderActiveTab(){
+    syncFocusInput();
+    renderPanel(PANELS[STATE.tab]);
+  }
+
+  fetch('dashboard_data.json').then(function(r){ return r.json(); }).then(function(json){
+    DATA = json;
+    DATA.hospById = {};
+    DATA.hospitals.forEach(function(h){ DATA.hospById[h.orgId]=h; });
+
+    document.getElementById('metaLine').textContent =
+      DATA.meta.region + ' • ' + DATA.hospitals.length + ' โรงพยาบาล • ข้อมูลตั้งแต่ ' + DATA.periods[0].label + ' ถึง ' + DATA.periods[DATA.periods.length-1].label + ' (ปีงบประมาณ 2569)';
+
+    document.getElementById('footNote').innerHTML =
+      '<b>ที่มาข้อมูล</b> — ระบบ Quick Method กองเศรษฐกิจสุขภาพ (ไฟล์ '+DATA.meta.source.split(' - ')[1]+') กรองเฉพาะ '+DATA.meta.region+' | ' +
+      '<b>หมวด Quick Method</b>: OPD/IPD/OthRev (รายรับ) และ LC/MC/CC/OthExp (รายจ่าย) จับคู่บัญชีตามตาราง MapQM ของกองเศรษฐกิจสุขภาพ — รายการย่อยในแท็บ 2/3/4/5/6 เป็นรายการจริงระดับเดียวกับตาราง MapQM (Account1) ไม่ใช่การจัดกลุ่มบัญชีอย่างกว้าง | ' +
+      '<b>สิทธิการรักษา</b> (แท็บ OPD/IPD): UC / ประกันสังคม / ข้าราชการ / ต่างด้าว / ไร้รัฐ / อื่นๆ | ' +
+      '<b>ยอดสะสม (YTD)</b> คำนวณจากยอดยกไป (EndCr/EndDr) และ <b>ยอดรายเดือน</b> จากยอดเดินบัญชี (Dr/Cr) ของแต่ละเดือน | ' +
+      '<b>ตัวกรอง</b>: เลือกจังหวัด/ขนาด (A–F3)/กลุ่มระดับบริการร่วมกันได้ในโหมด "ตามตัวกรอง" หรือสลับเป็น "เลือก รพ. เอง" เพื่อระบุรายแห่ง • "โฟกัส รพ." ปักหมุดโรงพยาบาลไว้คอลัมน์ซ้ายสุดของตารางแม้อยู่นอกกลุ่มที่กรองไว้ | ' +
+      '<b>ประชากร UC</b> อ้างอิง ปชก.UC ณ 1 เม.ย. 2568 จากไฟล์กลุ่มบริการ | ' +
+      '<b>กลุ่ม F2 ปรับใหม่</b>: แบ่งจากเดิม "F2 P≤30,000" เป็น <b>F2 P&lt;15,000</b> และ <b>F2 P15,000–30,000</b> ตามประชากร UC จริง (กลุ่ม F2 P30,000–60,000 เดิมไม่เปลี่ยนแปลง) | ' +
+      'จัดทำ ' + DATA.meta.generated;
+
+    buildControls();
+    switchTab(1);
+  }).catch(function(err){
+    document.getElementById('app').innerHTML = '<div class="loading">โหลดข้อมูลไม่สำเร็จ: '+err+'</div>';
+  });
+})();
+</script>
