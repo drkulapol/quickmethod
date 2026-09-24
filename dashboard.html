@@ -153,6 +153,11 @@
   th button{font:inherit; font-weight:700; color:var(--text-secondary); background:transparent; border:none; padding:9px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap;}
   th button:hover{color:var(--text-primary);}
   th.rowhead-col{position:sticky; left:0; z-index:4; background:var(--surface-2); text-align:left;}
+  /* Numeric column headers (e.g. Tab10's ตารางสรุป MOE): right-align the <th> itself, and make its
+     <button> fill the cell + right-justify its own flex content, so the header label sits directly
+     above the right-aligned numbers in the <td>s below instead of defaulting to th's centered text. */
+  th.num-th{text-align:right;}
+  th.num-th button{width:100%; justify-content:flex-end;}
   td.rowhead-col{position:sticky; left:0; z-index:1; background:var(--surface-1); text-align:left; font-weight:600;}
   td{padding:8px 10px; text-align:right; border-bottom:1px solid var(--grid); white-space:nowrap; color:var(--text-primary);}
   td.name{text-align:left; font-weight:500;}
@@ -162,6 +167,7 @@
   tr:hover td{background:var(--surface-2);}
   tr.median-row{background:var(--median-bg);}
   tr.median-row td{background:var(--median-bg); font-weight:700; border-top:1px solid var(--median-border); border-bottom:1px solid var(--median-border);}
+  tr.hl-row td{background:var(--highlight-bg); outline:1.5px solid var(--highlight-border); outline-offset:-1.5px;}
   td.net-pos{color:var(--good); font-weight:600;} td.net-neg{color:var(--critical); font-weight:600;}
   .col-sep{border-left:1px solid var(--border);}
   input.search{font:inherit; font-size:13.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; min-width:200px; color:var(--text-primary);}
@@ -269,7 +275,8 @@
     {id:6, label:"รายได้อื่น (OthRev)"},
     {id:7, label:"รายได้สม่ำเสมอ (ไม่รวมเหมาจ่าย)"},
     {id:8, label:"รายจ่ายประจำ(เงินบำรุง)"},
-    {id:9, label:"สรุป ฉ.11/ฉ.12"}
+    {id:9, label:"สรุป ฉ.11/ฉ.12"},
+    {id:10, label:"MOE (กองเศรษฐ)"}
   ];
   var LEVELS = ['A','S','M1','M2','F1','F2','F3'];
 
@@ -283,9 +290,10 @@
     avgView: {},                  // tabId -> "avg" — per-tab "หารเฉลี่ยรายเดือน" toggle (panel.avgToggle tabs only)
     period: null,
     metric: "ytd", basis: "raw",
-    chartSel: {1:"TOTAL_REV", 2:"TOTAL_OPD", 3:"TOTAL_IPD", 4:"TOTAL_LC", 5:"TOTAL_MC", 6:"TOTAL_OTHREV", 7:"TOTAL_REGULAR", 8:"TOTAL_RECURRING", 9:"TOTAL_CHOR1112"},
-    sortKey: {1:"TOTAL_REV",2:"TOTAL_OPD",3:"TOTAL_IPD",4:"TOTAL_LC",5:"TOTAL_MC",6:"TOTAL_OTHREV",7:"TOTAL_REGULAR",8:"TOTAL_RECURRING",9:"TOTAL_CHOR1112"},
-    sortDir: {1:-1,2:-1,3:-1,4:-1,5:-1,6:-1,7:-1,8:-1,9:-1}
+    chartSel: {1:"TOTAL_REV", 2:"TOTAL_OPD", 3:"TOTAL_IPD", 4:"TOTAL_LC", 5:"TOTAL_MC", 6:"TOTAL_OTHREV", 7:"TOTAL_REGULAR", 8:"TOTAL_RECURRING", 9:"TOTAL_CHOR1112", 10:"TOTAL_MOE"},
+    sortKey: {1:"TOTAL_REV",2:"TOTAL_OPD",3:"TOTAL_IPD",4:"TOTAL_LC",5:"TOTAL_MC",6:"TOTAL_OTHREV",7:"TOTAL_REGULAR",8:"TOTAL_RECURRING",9:"TOTAL_CHOR1112",10:"TOTAL_MOE"},
+    sortDir: {1:-1,2:-1,3:-1,4:-1,5:-1,6:-1,7:-1,8:-1,9:-1,10:-1},
+    moeSort: {key:'annual', dir:-1}   // Tab10's "ตารางสรุป MOE รายปี" — independent sort state (hospital rows, not the transposed item table)
   };
 
   var DATA = null;
@@ -533,6 +541,34 @@
     return {self:r.self/h.ucPop, budget:r.budget/h.ucPop};
   }
 
+  // MOE (Tab10) summary stats for one hospital: mean, population SD, mean+SD and (mean+SD)*12,
+  // computed from that hospital's own ACTUAL monthly figures (not the YTD/N "average view" toggle,
+  // which assumes uniform monthly spending) over the months elapsed so far this fiscal year, up to
+  // and including the currently selected ช่วงเวลา period — same "elapsed months" window the
+  // "หารเฉลี่ยรายเดือน" toggle uses elsewhere (periodIndex(STATE.period)+1). Always raw baht,
+  // regardless of the ฐานตัวเลข (per-UC-population) toggle — this is an annual reserve/budget
+  // estimate, which only makes sense as a real currency amount, not a per-capita figure.
+  function moeStatsFor(panel, orgId){
+    var n = periodIndex(STATE.period) + 1;
+    if(n <= 0 || !panel.moeIds) return {n:0, mean:null, sd:null, meanPlusSd:null, annual:null};
+    var periods = (DATA.periods||[]).slice(0, n);
+    var monthly = periods.map(function(p){
+      var pd = DATA.data[orgId] && DATA.data[orgId][p.key];
+      if(!pd) return 0;
+      var sum = 0;
+      panel.moeIds.forEach(function(id){
+        var v = pd.sub[id];
+        if(v) sum += v[0]; // month_value (that single month's movement, not YTD)
+      });
+      return sum;
+    });
+    var mean = monthly.reduce(function(a,b){ return a+b; }, 0) / monthly.length;
+    var variance = monthly.reduce(function(a,b){ return a + Math.pow(b-mean,2); }, 0) / monthly.length;
+    var sd = Math.sqrt(variance);
+    var meanPlusSd = mean + sd;
+    return {n: monthly.length, mean: mean, sd: sd, meanPlusSd: meanPlusSd, annual: meanPlusSd*12};
+  }
+
   /* ---------- cohort (filter-driven or manually-picked hospital set) ---------- */
   function cohortHospitals(){
     if(STATE.filterMode==='manual'){
@@ -587,7 +623,7 @@
   function idKind(panel, id){ var n=panel.nodesById[id]; return n ? n.kind : panel.kind; }
   function idLabel(panel, id){ var n=panel.nodesById[id]; return n ? n.label : id; }
 
-  function buildPanelDom(tabId, titleHtml, subHtml, extraHeaderHtml){
+  function buildPanelDom(tabId, titleHtml, subHtml, extraHeaderHtml, extraMidHtml){
     var chartExportHtml =
       '<div class="field"><label>ส่งออกกราฟ</label><div class="export-btns">' +
         '<button type="button" class="export-btn" data-export="chart-xlsx" data-tab="'+tabId+'" title="ดาวน์โหลดข้อมูลกราฟเป็น Excel (.csv)">⬇ Excel</button>' +
@@ -609,6 +645,7 @@
         '</div>' +
         '<div class="chartwrap"><svg id="chartSvg'+tabId+'"></svg></div>' +
       '</div>' +
+      (extraMidHtml||'') +
       '<div class="card" id="tableCard'+tabId+'">' +
         '<div class="card-head"><div><h2 id="tableTitle'+tabId+'">ตารางข้อมูลดิบ</h2><p id="tableSub'+tabId+'"></p></div>' + tableExportHtml + '</div>' +
         '<div class="tablewrap"><table id="dataTable'+tabId+'"></table></div>' +
@@ -973,10 +1010,112 @@
       fmtPeriodLabel(STATE.period, panel)+fundSuffix(panel)+' • หน่วย: '+unitLabel(panel)+' • คลิกชื่อรายการ (ซ้าย) เพื่อจัดเรียงโรงพยาบาลตามรายการนั้น • คลิกชื่อโรงพยาบาลเพื่อเน้น/ปักหมุด • เลื่อนแนวนอนเพื่อดูทุกแห่ง';
   }
 
+  // Tab10-only ("panel.moeIds" set): a separate summary card, hospital-per-row (not the transposed
+  // item×hospital layout renderPanelTable draws), showing each hospital's MOE เฉลี่ยรายเดือน / +1SD /
+  // ทั้งปี — kept as its own table rather than folded into the raw-item table above, per explicit
+  // user request ("แยกจากตารางข้อมูลดิบที่นำมาคิด").
+  function renderMoeSummary(panel){
+    if(!panel.moeIds) return;
+    var groupHs = cohortHospitals();
+    var hospitals = displayHospitals().slice();
+    var n = periodIndex(STATE.period) + 1;
+
+    var rows = hospitals.map(function(h){ return {h:h, s: moeStatsFor(panel, h.orgId)}; });
+    var sk = STATE.moeSort.key, sd = STATE.moeSort.dir;
+    rows.sort(function(a,b){
+      if(sk==='__NAME__') return sd*a.h.name.localeCompare(b.h.name,'th');
+      var av = a.s[sk], bv = b.s[sk];
+      av = (av===null||av===undefined||isNaN(av)) ? -Infinity : av;
+      bv = (bv===null||bv===undefined||isNaN(bv)) ? -Infinity : bv;
+      return sd*(av-bv);
+    });
+    if(STATE.focus){
+      var idx=-1; rows.forEach(function(r,i){ if(r.h.orgId===STATE.focus) idx=i; });
+      if(idx>0){ rows.unshift(rows.splice(idx,1)[0]); }
+    }
+
+    var table = document.getElementById('moeSummaryTable'+panel.tabId);
+    if(!table) return;
+
+    if(!hospitals.length){
+      table.innerHTML = '<tbody><tr><td class="empty-note">ไม่มีโรงพยาบาลในกลุ่มที่เลือก</td></tr></tbody>';
+      document.getElementById('moeSummarySub'+panel.tabId).textContent = '';
+      return;
+    }
+
+    // Coherent group median: rank hospitals by the headline metric ("MOE+1SD ทั้งปี") and take the
+    // actual middle-ranked hospital's own {mean, meanPlusSd, annual} triplet, rather than computing
+    // 3 independent per-column medians — those can (and did) pick different hospitals for different
+    // columns, producing a "median" row whose numbers don't belong to any single, real record.
+    var groupStats = groupHs.map(function(h){ return moeStatsFor(panel, h.orgId); })
+      .filter(function(s){ return s.annual!==null && s.annual!==undefined && !isNaN(s.annual); })
+      .sort(function(a,b){ return a.annual-b.annual; });
+    var medMean=null, medMeanSd=null, medAnnual=null;
+    if(groupStats.length){
+      var midIdx = Math.floor(groupStats.length/2);
+      if(groupStats.length%2){
+        medMean = groupStats[midIdx].mean; medMeanSd = groupStats[midIdx].meanPlusSd; medAnnual = groupStats[midIdx].annual;
+      } else {
+        var s1 = groupStats[midIdx-1], s2 = groupStats[midIdx];
+        medMean = (s1.mean+s2.mean)/2; medMeanSd = (s1.meanPlusSd+s2.meanPlusSd)/2; medAnnual = (s1.annual+s2.annual)/2;
+      }
+    }
+
+    var cols = [
+      {k:'mean', label:'MOE เฉลี่ยรายเดือน'},
+      {k:'meanPlusSd', label:'MOE เฉลี่ยรายเดือน +1SD'},
+      {k:'annual', label:'MOE+1SD ทั้งปี'}
+    ];
+    var thead = '<thead><tr>' +
+      '<th class="rowhead-col"><button data-k="__NAME__">โรงพยาบาล'+(sk==='__NAME__'?(sd>0?' ▲':' ▼'):' ▾')+'</button></th>' +
+      cols.map(function(c){ return '<th class="num-th"><button data-k="'+c.k+'">'+c.label+(sk===c.k?(sd>0?' ▲':' ▼'):' ▾')+'</button></th>'; }).join('') +
+      '</tr></thead>';
+
+    var medRow = '<tr class="median-row">' +
+      '<td class="rowhead-col">มัธยฐานกลุ่ม ('+groupHs.length+' แห่ง)</td>' +
+      '<td>'+thb(medMean,0)+'</td><td>'+thb(medMeanSd,0)+'</td><td>'+thb(medAnnual,0)+'</td>' +
+    '</tr>';
+
+    var bodyRows = rows.map(function(r){
+      var isHl = STATE.focus===r.h.orgId;
+      return '<tr'+(isHl?' class="hl-row"':'')+'>' +
+        '<td class="rowhead-col" title="'+r.h.name+'">'+r.h.name+'</td>' +
+        '<td>'+thb(r.s.mean,0)+'</td>' +
+        '<td>'+thb(r.s.meanPlusSd,0)+'</td>' +
+        '<td>'+thb(r.s.annual,0)+'</td>' +
+      '</tr>';
+    }).join('');
+
+    table.innerHTML = thead + '<tbody>' + medRow + bodyRows + '</tbody>';
+
+    table.querySelectorAll('th button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var k = btn.dataset.k;
+        if(STATE.moeSort.key===k) STATE.moeSort.dir *= -1;
+        else { STATE.moeSort.key = k; STATE.moeSort.dir = (k==='__NAME__') ? 1 : -1; }
+        renderMoeSummary(panel);
+      });
+    });
+    table.querySelectorAll('tbody tr:not(.median-row)').forEach(function(tr, idx){
+      tr.addEventListener('click', function(){
+        var h = rows[idx].h;
+        STATE.focus = (STATE.focus===h.orgId) ? "" : h.orgId;
+        syncFocusInput();
+        renderActiveTab();
+      });
+      tr.style.cursor = 'pointer';
+    });
+
+    var firstLabel = (DATA.periods||[])[0] ? (DATA.periods||[])[0].label : '';
+    document.getElementById('moeSummarySub'+panel.tabId).textContent =
+      'คำนวณจากยอดใช้จ่ายจริงรายเดือน '+n+' เดือน ('+firstLabel+' ถึง '+fmtPeriodLabel(STATE.period, {avgToggle:false})+') • หน่วยเป็นบาท (ไม่ขึ้นกับตัวเลือก "ฐานตัวเลข" ด้านบน) • SD = ส่วนเบี่ยงเบนมาตรฐานของยอดใช้จ่ายรายเดือนจริงของแต่ละแห่ง • MOE+1SD ทั้งปี = (ค่าเฉลี่ยรายเดือน + SD) × 12 • แถว "มัธยฐานกลุ่ม" คือค่าจริงของโรงพยาบาลลำดับกลาง (เรียงตาม MOE+1SD ทั้งปี) ทั้ง 3 ค่า จึงเป็นชุดตัวเลขของแห่งเดียวกันเสมอ • คลิกชื่อโรงพยาบาลเพื่อเน้น/ปักหมุด';
+  }
+
   function renderPanel(panel){
     renderPanelKPIs(panel);
     renderPanelChart(panel);
     renderPanelTable(panel);
+    renderMoeSummary(panel);
   }
 
   /* ---------- boot / controls ---------- */
@@ -1026,7 +1165,8 @@
       '<div class="tabpanel" id="panel6" hidden></div>' +
       '<div class="tabpanel" id="panel7" hidden></div>' +
       '<div class="tabpanel" id="panel8" hidden></div>' +
-      '<div class="tabpanel" id="panel9" hidden></div>';
+      '<div class="tabpanel" id="panel9" hidden></div>' +
+      '<div class="tabpanel" id="panel10" hidden></div>';
 
     document.getElementById('filterModeSeg').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
@@ -1670,13 +1810,90 @@
       renderPanel(PANELS[9]);
     });
 
-    [1,2,3,4,5,6,7,8,9].forEach(function(t){ initPanel(PANELS[t]); });
+    // Tab10 — "MOE (กองเศรษฐ)": a fixed, explicit list of Labor Cost / Material Cost / Other-Expense
+    // real Quick Method line items that กองเศรษฐกิจสุขภาพ treats as the minimum operating expenditure
+    // (ค่าใช้จ่ายขั้นต่ำที่จำเป็น) a hospital must cover every month, per user-supplied list. Reads the
+    // same raw DATA.subItems.LC/MC/OthExp arrays Tab4/5/6 build from (never Tab4/5/6's own tree nodes),
+    // so this tab cannot drift out of sync with — or accidentally mutate — those tabs. One item in the
+    // user's list ("ค่าใช้จ่ายตามโครงการ (P&P) แรงงานต่างด้าว", MapCode 5104030299.502) exists in the
+    // MapQM chart of accounts but has zero transactions in every hospital/period in this region's raw
+    // data (verified directly against csv/DataIn.csv), so it never appears in subItems.OthExp and is
+    // correctly omitted here — its true contribution to every total below is exactly ฿0 regardless.
+    var MOE_LC_IDS = [
+      'LC::5101010113.104','LC::5101010113.105','LC::5101010113.106','LC::5101010199.103',
+      'LC::5101020114.114','LC::5104040102.101','LC::5104040102.102','LC::5104040102.103',
+      'LC::5104040102.113','LC::5104040102.114','LC::5104040102.117','LC::5104040102.118'
+    ];
+    var MOE_MC_IDS = [
+      'MC::5104010104.101','MC::5104010104.102','MC::5104010104.103','MC::5104010104.104',
+      'MC::5104010104.105','MC::5104010104.106','MC::5104010104.107','MC::5104010104.108',
+      'MC::5104010104.109','MC::5104010107.101','MC::5104010107.102','MC::5104010107.103',
+      'MC::5104010107.104','MC::5104010107.105','MC::5104010107.106','MC::5104010107.107',
+      'MC::5104010107.108','MC::5104010107.109','MC::5104010107.110','MC::5104010107.111',
+      'MC::5104010107.112','MC::5104010107.113','MC::5104010110.101','MC::5104010112.101',
+      'MC::5104010112.103','MC::5104010112.106','MC::5104010112.108','MC::5104010112.110',
+      'MC::5104010112.111','MC::5104010112.112','MC::5104010112.113','MC::5104010112.114',
+      'MC::5104010112.115','MC::5104020101.101','MC::5104020103.101','MC::5104020105.101',
+      'MC::5104020106.101','MC::5104020107.101','MC::5104030205.101','MC::5104030205.102',
+      'MC::5104030205.103','MC::5104030205.104','MC::5104030205.112','MC::5104030205.113',
+      'MC::5104030205.117','MC::5104030205.118','MC::5104030206.101','MC::5104030212.101',
+      'MC::5104030299.102'
+    ];
+    var MOE_OTHEXP_IDS = ['OthExp::5104030299.701'];
+
+    var lcById10 = {}; (DATA.subItems.LC||[]).forEach(function(it){ lcById10[it.id] = it; });
+    var mcById10 = {}; (DATA.subItems.MC||[]).forEach(function(it){ mcById10[it.id] = it; });
+    var otById10 = {}; (DATA.subItems.OthExp||[]).forEach(function(it){ otById10[it.id] = it; });
+    function moeLeaves(ids, byId){
+      return ids.filter(function(id){ return byId[id]; }).map(function(id){
+        var it = byId[id];
+        return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund);
+      });
+    }
+    var moeLC = moeLeaves(MOE_LC_IDS, lcById10);
+    var moeMC = moeLeaves(MOE_MC_IDS, mcById10);
+    var moeOT = moeLeaves(MOE_OTHEXP_IDS, otById10);
+    var moeKids = [
+      makeGroup('MOE_LC','ค่าตอบแทน/ค่าจ้างบุคลากร (LC)','expense', moeLC),
+      makeGroup('MOE_MC','ค่าวัสดุ/ค่าใช้สอย/สาธารณูปโภค (MC)','expense', moeMC),
+      makeGroup('MOE_OTHEXP','ค่าใช้จ่ายตามโครงการอื่น (OthExp)','expense', moeOT)
+    ].filter(function(n){ return n.kids.length; });
+    var moeCount = moeLC.length + moeMC.length + moeOT.length;
+    var rootMOE = makeGroup('TOTAL_MOE','MOE (กองเศรษฐ) — ค่าใช้จ่ายขั้นต่ำที่จำเป็น','expense', moeKids,
+      'รายการย่อยตามที่กองเศรษฐกิจสุขภาพกำหนด ('+moeCount+' รายการ)');
+    PANELS[10] = finalizePanel(10,'expense',[rootMOE]);
+    PANELS[10].avgToggle = true;
+    // Feeds renderMoeSummary()'s per-hospital mean/SD/annual summary table (a separate card from the
+    // raw item table below it), per explicit user request. Real leaf ids only (moeLC/moeMC/moeOT are
+    // already filtered to ids actually present in this region's data).
+    PANELS[10].moeIds = moeLC.concat(moeMC, moeOT).map(function(n){ return n.id; });
+    var avgSegHtml10 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg10">' +
+      '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
+      '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
+      '</div></div>';
+    var moeSummaryMidHtml =
+      '<div class="card" id="moeSummaryCard10">' +
+        '<div class="card-head"><div><h2>ตารางสรุป MOE รายปี (ประมาณการ)</h2><p id="moeSummarySub10"></p></div></div>' +
+        '<div class="tablewrap"><table id="moeSummaryTable10"></table></div>' +
+      '</div>';
+    document.getElementById('panel10').innerHTML = buildPanelDom(10,
+      'MOE (กองเศรษฐ) — ค่าใช้จ่ายขั้นต่ำที่จำเป็น',
+      'รวมค่าตอบแทน/ค่าจ้างบุคลากร + ค่าวัสดุ/ค่าใช้สอย/สาธารณูปโภค + ค่าใช้จ่ายตามโครงการ ('+moeCount+' รายการ ตามที่กองเศรษฐกิจสุขภาพกำหนด) — กด "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน',
+      avgSegHtml10, moeSummaryMidHtml);
+    document.getElementById('avgSeg10').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      STATE.avgView[10] = b.dataset.v;
+      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
+      renderPanel(PANELS[10]);
+    });
+
+    [1,2,3,4,5,6,7,8,9,10].forEach(function(t){ initPanel(PANELS[t]); });
   }
 
   function switchTab(id){
     STATE.tab = id;
     document.querySelectorAll('.tab').forEach(function(b){ b.setAttribute('aria-selected', String(parseInt(b.dataset.tab,10)===id)); });
-    for(var i=1;i<=9;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
+    for(var i=1;i<=10;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
     renderActiveTab();
   }
 
