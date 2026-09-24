@@ -59,6 +59,14 @@
   .eyebrow{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin:0 0 6px;}
   h1{font-size:25px; font-weight:800; margin:0 0 6px; letter-spacing:-.01em;}
   .sub{color:var(--text-secondary); font-size:14px; margin:0; line-height:1.6;}
+  .hdr-nav{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0;}
+  .hdr-link{
+    font:inherit; font-size:12.5px; font-weight:600; color:var(--text-secondary); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:999px; padding:7px 14px; text-decoration:none;
+    display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+  }
+  .hdr-link:hover{background:var(--surface-1); color:var(--text-primary); border-color:var(--accent);}
+  .hdr-link-current{background:var(--rev-soft); color:var(--accent); border-color:var(--rev-tint); cursor:default;}
 
   .panel{
     background:var(--surface-1); border:1px solid var(--border); border-radius:14px;
@@ -233,6 +241,12 @@
     <p class="eyebrow">Quick Method · กองเศรษฐกิจสุขภาพ</p>
     <h1>แดชบอร์ดวิเคราะห์รายรับ–รายจ่าย โรงพยาบาล เขตสุขภาพที่ 1</h1>
     <p class="sub" id="metaLine">กำลังโหลดข้อมูล…</p>
+    <nav class="hdr-nav" aria-label="แดชบอร์ดวิเคราะห์อื่นของเขตสุขภาพที่ 1">
+      <a class="hdr-link" href="https://drkulapol.github.io/planfin-analysis/" target="_blank" rel="noopener">วิเคราะห์ Planfin เขต 1</a>
+      <a class="hdr-link" href="https://drkulapol.github.io/mishos-rh1/" target="_blank" rel="noopener">วิเคราะห์ รายรับรายกองทุน เขต 1</a>
+      <span class="hdr-link hdr-link-current" aria-current="page" title="กำลังดูหน้านี้อยู่">วิเคราะห์ รายรับ-จ่ายทางบัญชี เขต 1</span>
+      <a class="hdr-link" href="https://cmi-rh1.github.io/cmi-rh1/#tab=overview&h=11183" target="_blank" rel="noopener">วิเคราะห์ CMI รายโรค/กลุ่ม ADJRW &lt; 0.5 เขต 1</a>
+    </nav>
   </header>
 
   <div id="app"><div class="loading">กำลังโหลดข้อมูลทางการเงิน…</div></div>
