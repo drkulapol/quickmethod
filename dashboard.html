@@ -190,6 +190,13 @@
   table.tp tr.sub-row td.rowhead-col{font-weight:400; color:var(--text-muted); font-size:11.5px;}
   table.tp td.hl-col{background:var(--highlight-bg); outline:1.5px solid var(--highlight-border); outline-offset:-1.5px;}
   table.tp th.hl-col{background:var(--highlight-bg);}
+  /* "other year" reference column (tabs 2-10, shown only when a hospital is focused) — same visual
+     convention as the median column (a fixed reference value, not a selectable hospital): amber/gold
+     tokens, not clickable (cursor:default, no hover state, excluded from the th.hosp-th[data-org]
+     click-to-focus selector). */
+  table.tp th.oy-th{cursor:default; text-align:right; font-weight:700; padding:9px 8px; min-width:84px; width:84px; background:var(--median-bg); color:var(--median-border); border-left:1px solid var(--median-border); border-right:1px solid var(--median-border);}
+  table.tp th.oy-th .hn{display:block; max-width:78px; overflow:hidden; text-overflow:ellipsis; margin-left:auto;}
+  table.tp td.oy-td{background:var(--median-bg); font-weight:600; border-left:1px solid var(--median-border); border-right:1px solid var(--median-border);}
   table.tp .corner-btn{cursor:pointer; background:transparent; border:none; font:inherit; font-weight:700; color:var(--text-secondary); padding:0; text-align:left; width:100%;}
   table.tp .corner-btn:hover{color:var(--text-primary);}
 
@@ -276,12 +283,15 @@
     {id:7, label:"รายได้สม่ำเสมอ (ไม่รวมเหมาจ่าย)"},
     {id:8, label:"รายจ่ายประจำ(เงินบำรุง)"},
     {id:9, label:"สรุป ฉ.11/ฉ.12"},
-    {id:10, label:"MOE (กองเศรษฐ)"}
+    {id:10, label:"MOE (กองเศรษฐ)"},
+    {id:11, label:"เปรียบเทียบรายปี"}
   ];
   var LEVELS = ['A','S','M1','M2','F1','F2','F3'];
+  var FY_YEARS = ['2568','2569'];   // fiscal years loaded into YEARS_DATA — order = display order everywhere
 
   var STATE = {
     tab: 1,
+    year: '2569',                 // selected fiscal year for tabs 1-10 — "2568" | "2569" (Tab11 always shows both)
     filterMode: "filter",       // "filter" | "manual"
     province: "", level: "", group: "",
     manualSet: {},               // orgId -> true
@@ -296,7 +306,8 @@
     moeSort: {key:'annual', dir:-1}   // Tab10's "ตารางสรุป MOE รายปี" — independent sort state (hospital rows, not the transposed item table)
   };
 
-  var DATA = null;
+  var DATA = null;              // the currently-selected fiscal year's dataset (tabs 1-10 read this)
+  var YEARS_DATA = {};          // fyear string -> full dataset, for every fiscal year loaded (Tab11 reads this directly)
   var PANELS = {}; // built after data loads
 
   /* ---------- formatting helpers ---------- */
@@ -415,17 +426,25 @@
     });
     if(rows.length<2){ showToast('ไม่มีข้อมูลตารางให้ส่งออกในขณะนี้'); return; }
     var titleEl = document.getElementById('tableTitle'+panel.tabId);
-    var fn = 'ตาราง_'+safeFileTag(titleEl?titleEl.textContent:('แถบ'+panel.tabId))+'_'+STATE.period+'.csv';
+    var fn = 'ตาราง_'+safeFileTag(titleEl?titleEl.textContent:('แถบ'+panel.tabId))+'_'+(panel._exportPeriodLabel||STATE.period)+'.csv';
     downloadCsv(fn, rows);
   }
   function exportChartCsv(panel){
     var rows = panel._chartRows;
     if(!rows || !rows.length){ showToast('ไม่มีข้อมูลกราฟให้ส่งออกในขณะนี้'); return; }
-    var header = panel._chartSplit ? ['โรงพยาบาล','เงินบำรุง','เงินงบประมาณ','รวม'] : ['โรงพยาบาล','ค่า'];
-    var body = rows.map(function(r){
-      return panel._chartSplit ? [r.name, (r.self===null?'':r.self), (r.budget===null?'':r.budget), r.v] : [r.name, r.v];
-    });
-    var fn = 'กราฟ_'+safeFileTag(panel._chartLabel||('แถบ'+panel.tabId))+'_'+STATE.period+'.csv';
+    var header, body;
+    if(panel._chartCols){
+      // generic column-mapped shape (e.g. Tab11's year-comparison chart, not a per-hospital bar) —
+      // panel._chartCols = [{key,label}, ...], each row an object keyed the same way.
+      header = panel._chartCols.map(function(c){ return c.label; });
+      body = rows.map(function(r){ return panel._chartCols.map(function(c){ return r[c.key]; }); });
+    } else {
+      header = panel._chartSplit ? ['โรงพยาบาล','เงินบำรุง','เงินงบประมาณ','รวม'] : ['โรงพยาบาล','ค่า'];
+      body = rows.map(function(r){
+        return panel._chartSplit ? [r.name, (r.self===null?'':r.self), (r.budget===null?'':r.budget), r.v] : [r.name, r.v];
+      });
+    }
+    var fn = 'กราฟ_'+safeFileTag(panel._chartLabel||('แถบ'+panel.tabId))+'_'+(panel._exportPeriodLabel||STATE.period)+'.csv';
     downloadCsv(fn, [header].concat(body));
   }
   var printCleanupFn = null;
@@ -512,6 +531,69 @@
     if(!h || !h.ucPop) return null;
     return v/h.ucPop;
   }
+
+  /* ---------- cross-year data access (for the "other year" comparison column in tabs 2-10) ----------
+     Mirrors rawFor/compositeFor/pickMetricValue/valFor above, but reads from an explicit year-dataset
+     (yd) + period key instead of the global DATA/STATE.period, so a value from the OTHER loaded fiscal
+     year can be fetched without disturbing any existing single-year code path. Periods are matched by
+     "same elapsed fiscal-month position" (periodIndexIn), not by calendar-month string — the same
+     approach already used by Tab11's cutoffPeriod logic — since a still-running fiscal year never lines
+     up month-for-month against a completed one. */
+  function otherYear(){
+    var others = FY_YEARS.filter(function(y){ return y!==STATE.year; });
+    return others.length ? others[0] : null;
+  }
+  function periodIndexIn(periodsArr, key){
+    var idx = -1;
+    (periodsArr||[]).forEach(function(p,i){ if(p.key===key) idx=i; });
+    return idx;
+  }
+  function rawForYear(yd, periodKey, source, orgId, id){
+    var pd = yd.data[orgId] && yd.data[orgId][periodKey];
+    if(!pd) return [0,0];
+    var bucket = source==='qm' ? pd.qm : source==='payer' ? pd.payer : pd.sub;
+    return bucket[id] || [0,0];
+  }
+  function compositeForYear(panel, yd, periodKey, orgId, id){
+    var node = panel.nodesById[id];
+    if(!node) return [0,0];
+    if(node.kids && node.kids.length){
+      var m=0,y=0;
+      node.kids.forEach(function(k){
+        if(!nodeIncluded(panel,k)) return;
+        var r=compositeForYear(panel, yd, periodKey, orgId, k.id); m+=r[0]; y+=r[1];
+      });
+      return [m,y];
+    }
+    return rawForYear(yd, periodKey, node.source, orgId, node.id);
+  }
+  function pickMetricValueForYear(panel, yd, periodKey, raw){
+    if(isAvgOn(panel)){
+      var n = periodIndexIn(yd.periods, periodKey)+1;
+      return n>0 ? raw[1]/n : raw[1];
+    }
+    return STATE.metric==='month' ? raw[0] : raw[1];
+  }
+  // Value of item `id` for hospital `orgId`, from the OTHER loaded fiscal year, at the period sitting at
+  // the same elapsed fiscal-month position as the currently selected STATE.period. Returns null when no
+  // other year is loaded, that position doesn't exist yet in the other year, or the hospital has no UC
+  // population figure (needed under the per-population basis) — callers render a blank cell for null.
+  function valForOtherYear(panel, orgId, id){
+    var oy = otherYear();
+    if(!oy) return null;
+    var yd = YEARS_DATA[oy];
+    if(!yd) return null;
+    var idx = periodIndexIn(DATA.periods, STATE.period);
+    if(idx<0 || idx>=yd.periods.length) return null;
+    var periodKey = yd.periods[idx].key;
+    var raw = compositeForYear(panel, yd, periodKey, orgId, id);
+    var v = pickMetricValueForYear(panel, yd, periodKey, raw);
+    if(STATE.basis==='raw') return v;
+    var h = yd.hospById[orgId];
+    if(!h || !h.ucPop) return null;
+    return v/h.ucPop;
+  }
+
   // Per-hospital self-fund vs budget-fund split of a node's value (panel.fundBreakdown panels'
   // chart only) — same computation as renderPanelKPIs's breakdown tiles: walk the node's real
   // leaves directly and bucket by their own fund tag, bypassing STATE.lcFund/nodeIncluded so this
@@ -623,7 +705,9 @@
   function idKind(panel, id){ var n=panel.nodesById[id]; return n ? n.kind : panel.kind; }
   function idLabel(panel, id){ var n=panel.nodesById[id]; return n ? n.label : id; }
 
-  function buildPanelDom(tabId, titleHtml, subHtml, extraHeaderHtml, extraMidHtml){
+  function buildPanelDom(tabId, titleHtml, subHtml, extraHeaderHtml, extraMidHtml, hideCatSelect){
+    var catSelectHtml = hideCatSelect ? '' :
+      '<div class="field"><label>เลือกรายการ</label><select id="catSel'+tabId+'"></select></div>';
     var chartExportHtml =
       '<div class="field"><label>ส่งออกกราฟ</label><div class="export-btns">' +
         '<button type="button" class="export-btn" data-export="chart-xlsx" data-tab="'+tabId+'" title="ดาวน์โหลดข้อมูลกราฟเป็น Excel (.csv)">⬇ Excel</button>' +
@@ -640,7 +724,7 @@
         '<div class="card-head">' +
           '<div><h2>'+titleHtml+'</h2><p id="chartSub'+tabId+'">'+subHtml+'</p></div>' +
           (extraHeaderHtml||'') +
-          '<div class="field"><label>เลือกรายการ</label><select id="catSel'+tabId+'"></select></div>' +
+          catSelectHtml +
           chartExportHtml +
         '</div>' +
         '<div class="chartwrap"><svg id="chartSvg'+tabId+'"></svg></div>' +
@@ -935,15 +1019,28 @@
       return;
     }
 
+    // "other year" reference column: same hospital's own line-item figures from the other loaded
+    // fiscal year, shown right beside its current-year column — only meaningful once a hospital is
+    // focused, and only on tabs 2-10 (Tab1 excluded per explicit request) with a second year loaded.
+    var showOtherYearCol = panel.tabId!==1 && !!STATE.focus && !!otherYear();
+    var oyYear = showOtherYearCol ? otherYear() : null;
+
+    var hospTh = hospitals.map(function(h){
+      var isHl = STATE.focus===h.orgId;
+      var outside = isHl && !groupHs.some(function(x){return x.orgId===h.orgId;});
+      return '<th class="hosp-th'+(isHl?' hl-col':'')+'" aria-current="'+isHl+'" data-org="'+h.orgId+'" title="'+h.name+' • '+h.province+' • '+h.group+' • UC '+thb(h.ucPop)+' คน — คลิกเพื่อเน้น/ปักหมุด">'+
+        '<span class="hn">'+truncate(h.name.replace('รพ. ',''),13)+'</span>'+(outside?'<span style="display:block;font-weight:400;font-size:9px;color:var(--accent)">(นอกกลุ่ม)</span>':'')+'</th>';
+    });
+    if(showOtherYearCol){
+      hospTh.splice(1, 0,
+        '<th class="oy-th" title="ค่าของ '+hospitals[0].name+' เอง ในปีงบ '+oyYear+' — เทียบรายการเดียวกัน ที่ตำแหน่งเดือนสะสมเดียวกัน">'+
+          '<span class="hn">ปีงบ '+oyYear+'</span><span style="display:block;font-weight:400;font-size:9px">('+truncate(hospitals[0].name.replace('รพ. ',''),13)+')</span></th>');
+    }
+
     var thead = '<thead><tr>' +
       '<th class="rowhead-col"><button class="corner-btn" title="คลิกเพื่อเรียงชื่อโรงพยาบาล ก-ฮ">รายการ ▾</button></th>' +
       '<th class="med-th">มัธยฐาน<br><span style="font-weight:400;font-size:9.5px">('+groupHs.length+' แห่งในกลุ่ม)</span></th>' +
-      hospitals.map(function(h){
-        var isHl = STATE.focus===h.orgId;
-        var outside = isHl && !groupHs.some(function(x){return x.orgId===h.orgId;});
-        return '<th class="hosp-th'+(isHl?' hl-col':'')+'" aria-current="'+isHl+'" title="'+h.name+' • '+h.province+' • '+h.group+' • UC '+thb(h.ucPop)+' คน — คลิกเพื่อเน้น/ปักหมุด">'+
-          '<span class="hn">'+truncate(h.name.replace('รพ. ',''),13)+'</span>'+(outside?'<span style="display:block;font-weight:400;font-size:9px;color:var(--accent)">(นอกกลุ่ม)</span>':'')+'</th>';
-      }).join('') +
+      hospTh.join('') +
       '</tr></thead>';
 
     var rowSpec = panel.fundFilterable && STATE.lcFund!=='all'
@@ -968,17 +1065,21 @@
       var kindCls = r.kind==='expense'?'exp':(r.kind==='series3'?'s3':'rev');
       var cellCls = r.kind==='expense'?'col-exp':(r.kind==='series3'?'col-3':'col-rev');
       var pad = 10 + r.level*16;
-      var cells = hospitals.map(function(h,i){
+      var cellArr = hospitals.map(function(h,i){
         var isHl = STATE.focus===h.orgId;
         return '<td class="'+cellCls+(isHl?' hl-col':'')+'">'+thb(vals[i],dec)+'</td>';
-      }).join('');
+      });
+      if(showOtherYearCol){
+        var oyVal = valForOtherYear(panel, hospitals[0].orgId, r.id);
+        cellArr.splice(1, 0, '<td class="'+cellCls+' oy-td">'+thb(oyVal,dec)+'</td>');
+      }
       return '<tr class="'+rowType+(r.level===0?' '+kindCls:'')+'" data-row="'+r.id+'">' +
         '<td class="rowhead-col" style="padding-left:'+pad+'px" title="'+r.label+'">'+r.label+'</td>' +
-        '<td class="med-td">'+thb(med,dec)+'</td>' + cells + '</tr>';
+        '<td class="med-td">'+thb(med,dec)+'</td>' + cellArr.join('') + '</tr>';
     }).join('');
 
     if(!rowsComputed.length){
-      bodyRows = '<tr><td class="empty-note" colspan="'+(hospitals.length+2)+'">ทุกรายการเป็น 0 สำหรับกลุ่มที่เลือก</td></tr>';
+      bodyRows = '<tr><td class="empty-note" colspan="'+(hospitals.length+2+(showOtherYearCol?1:0))+'">ทุกรายการเป็น 0 สำหรับกลุ่มที่เลือก</td></tr>';
     }
 
     table.innerHTML = thead+'<tbody>'+bodyRows+'</tbody>';
@@ -997,17 +1098,21 @@
         renderPanelTable(panel);
       });
     });
-    table.querySelectorAll('th.hosp-th').forEach(function(th, idx){
+    // Uses data-org (set on every real hospital <th>) rather than positional array indexing, so the
+    // click target stays correct regardless of the "other year" reference <th> (no data-org, and no
+    // hosp-th class) being spliced in between columns.
+    table.querySelectorAll('th.hosp-th[data-org]').forEach(function(th){
       th.addEventListener('click', function(){
-        var h = hospitals[idx];
-        STATE.focus = (STATE.focus===h.orgId) ? "" : h.orgId;
+        var orgId = th.dataset.org;
+        STATE.focus = (STATE.focus===orgId) ? "" : orgId;
         syncFocusInput();
         renderActiveTab();
       });
     });
 
     document.getElementById('tableSub'+panel.tabId).textContent =
-      fmtPeriodLabel(STATE.period, panel)+fundSuffix(panel)+' • หน่วย: '+unitLabel(panel)+' • คลิกชื่อรายการ (ซ้าย) เพื่อจัดเรียงโรงพยาบาลตามรายการนั้น • คลิกชื่อโรงพยาบาลเพื่อเน้น/ปักหมุด • เลื่อนแนวนอนเพื่อดูทุกแห่ง';
+      fmtPeriodLabel(STATE.period, panel)+fundSuffix(panel)+' • หน่วย: '+unitLabel(panel)+' • คลิกชื่อรายการ (ซ้าย) เพื่อจัดเรียงโรงพยาบาลตามรายการนั้น • คลิกชื่อโรงพยาบาลเพื่อเน้น/ปักหมุด • เลื่อนแนวนอนเพื่อดูทุกแห่ง' +
+      (showOtherYearCol ? ' • คอลัมน์สีเหลืองอำพันคือค่าของโรงพยาบาลที่โฟกัสเองในปีงบ '+oyYear+' (ตำแหน่งเดือนสะสมเดียวกัน)' : '');
   }
 
   // Tab10-only ("panel.moeIds" set): a separate summary card, hospital-per-row (not the transposed
@@ -1118,6 +1223,208 @@
     renderMoeSummary(panel);
   }
 
+  // Tab11 — "เปรียบเทียบรายปี": always reads both fiscal years directly from YEARS_DATA (never the
+  // global DATA/STATE.year used by tabs 1-10), for whichever hospital cohort the filters above select.
+  // Comparison basis: cumulative YTD figures from each year, both cut off at the SAME elapsed-month
+  // position within their fiscal year (Oct = month 1 ... Sep = month 12) — the position is however many
+  // months of real data the newer year (2569, the still-running year) has so far, so a still-partial
+  // current year is never unfairly compared against a full 12-month prior year.
+  var QM_COMPARE_ORDER = ['OPD','IPD','OthRev','LC','MC','CC','OthExp'];
+  function yearCompareCats(){
+    var canonical = (YEARS_DATA['2569'] && YEARS_DATA['2569'].qmCategories) || (YEARS_DATA['2568'] && YEARS_DATA['2568'].qmCategories) || [];
+    var byId = {}; canonical.forEach(function(c){ byId[c.id]=c; });
+    return QM_COMPARE_ORDER.filter(function(id){ return byId[id]; }).map(function(id){ return byId[id]; });
+  }
+  function renderYearCompare(){
+    var haveBoth = FY_YEARS.every(function(y){ return !!YEARS_DATA[y]; });
+    if(!haveBoth){
+      document.getElementById('chartSvg11').innerHTML='';
+      document.getElementById('chartSub11').textContent = 'กำลังโหลดข้อมูลปีเปรียบเทียบ…';
+      return;
+    }
+    var cats = yearCompareCats();
+    var hs = cohortHospitals();
+
+    // Same elapsed-month cutoff in both years: however many periods FY2569 (the still-running year)
+    // actually has data for so far.
+    var nElapsed = YEARS_DATA['2569'].periods.length;
+    var cutoffPeriod = {};
+    FY_YEARS.forEach(function(y){
+      var periods = YEARS_DATA[y].periods;
+      cutoffPeriod[y] = periods[Math.min(nElapsed, periods.length)-1];
+    });
+
+    function sumCat(y, catId){
+      var pkey = cutoffPeriod[y].key;
+      var yd = YEARS_DATA[y];
+      var sum = 0;
+      hs.forEach(function(h){
+        var d = yd.data[h.orgId] && yd.data[h.orgId][pkey];
+        var v = d && d.qm && d.qm[catId];
+        if(v) sum += v[1]; // index 1 = ytd_value
+      });
+      return sum;
+    }
+    function catForOrg(y, orgId, catId){
+      var pkey = cutoffPeriod[y].key;
+      var yd = YEARS_DATA[y];
+      var d = yd.data[orgId] && yd.data[orgId][pkey];
+      var v = d && d.qm && d.qm[catId];
+      return v ? v[1] : 0; // index 1 = ytd_value
+    }
+    // Shared grouped-bar drawer — used for both the cohort-total chart and the single focused
+    // hospital's own chart below, so the two stay visually/behaviorally identical (same scale-per-
+    // chart approach, same tooltip format, same colors-mean-year convention).
+    function drawYearBars(svgId, rows){
+      var svgEl = document.getElementById(svgId);
+      var rowH=18, pairGap=3, groupGap=16;
+      var n = rows.length;
+      var chartH = n*(rowH*2+pairGap+groupGap)+20;
+      var leftW=190, rightPad=100, width=900, plotW=width-leftW-rightPad;
+      var maxAbs = Math.max.apply(null, rows.map(function(c){return Math.max(Math.abs(c.v[y0]),Math.abs(c.v[y1]));}).concat([1]));
+      var scale = function(v){ return (v/maxAbs)*plotW; };
+      svgEl.setAttribute('viewBox','0 0 '+width+' '+chartH);
+      svgEl.setAttribute('width','100%'); svgEl.setAttribute('height',chartH);
+      svgEl.innerHTML='';
+      var ns='http://www.w3.org/2000/svg';
+      function el(tag,attrs){ var e=document.createElementNS(ns,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+      svgEl.appendChild(el('line',{x1:leftW,x2:leftW,y1:4,y2:chartH-4,stroke:getCss('--baseline'),'stroke-width':1}));
+      var colorY0 = getCss('--series3'), colorY1 = getCss('--rev');
+      rows.forEach(function(c,i){
+        var groupY = 10+i*(rowH*2+pairGap+groupGap);
+        var label = el('text',{x:leftW-8,y:groupY+rowH+pairGap/2+4,'text-anchor':'end',class:'cat-label'});
+        label.textContent = truncate(c.label,24);
+        svgEl.appendChild(label);
+        [[y0,colorY0,groupY],[y1,colorY1,groupY+rowH+pairGap]].forEach(function(pair){
+          var y=pair[0], color=pair[1], yy=pair[2];
+          var v = c.v[y];
+          var w = Math.max(2, Math.abs(scale(v)));
+          var x = v>=0 ? leftW : leftW-w;
+          var rect = el('rect',{x:x,y:yy,width:w,height:rowH,rx:3,fill:color,opacity:0.88,class:'bar-rect'});
+          svgEl.appendChild(rect);
+          var vlabel = el('text',{x:x+(v>=0?w+6:-6),y:yy+rowH*0.72,'text-anchor':v>=0?'start':'end',class:'bar-label'});
+          vlabel.textContent = compact(v);
+          svgEl.appendChild(vlabel);
+          rect.addEventListener('mousemove', function(evt){ showTip(evt, c.label+'<br>ปีงบ '+y+'<br><b>'+thb(v,0)+'</b> บาท'); });
+          rect.addEventListener('mouseleave', hideTip);
+        });
+      });
+    }
+
+    var catVals = cats.map(function(c){
+      var v = {}; FY_YEARS.forEach(function(y){ v[y]=sumCat(y,c.id); });
+      return {id:c.id, label:c.label, kind:c.kind, v:v};
+    });
+    var revCats = catVals.filter(function(c){return c.kind==='revenue';});
+    var expCats = catVals.filter(function(c){return c.kind==='expense';});
+    function sumOf(list, y){ return list.reduce(function(a,c){return a+c.v[y];},0); }
+    var totRev = {}, totExp = {}, net = {};
+    FY_YEARS.forEach(function(y){ totRev[y]=sumOf(revCats,y); totExp[y]=sumOf(expCats,y); net[y]=totRev[y]-totExp[y]; });
+
+    function pct(oldV, newV){ return oldV ? ((newV-oldV)/Math.abs(oldV)*100) : null; }
+    function fmtPct(p){ return p===null ? '—' : (p>=0?'+':'')+p.toFixed(1)+'%'; }
+    var y0 = FY_YEARS[0], y1 = FY_YEARS[1]; // '2568','2569'
+
+    var basisNote = 'เทียบยอดสะสม (YTD) '+nElapsed+' เดือนแรกของปีงบ ('+cutoffPeriod[y0].label+' ปีงบ '+y0+' เทียบ '+cutoffPeriod[y1].label+' ปีงบ '+y1+')';
+
+    // ---- KPI tiles ----
+    document.getElementById('kpis11').innerHTML =
+      '<div class="tile"><div class="label">จำนวนโรงพยาบาลในกลุ่ม</div><div class="value">'+hs.length+' แห่ง</div><div class="delta">'+cohortLabel()+'</div></div>' +
+      '<div class="tile"><div class="label">รายรับรวม ปีงบ '+y1+'</div><div class="value" style="color:var(--rev)">'+compact(totRev[y1])+' บาท</div><div class="delta">ปีงบ '+y0+': '+compact(totRev[y0])+' บาท • '+fmtPct(pct(totRev[y0],totRev[y1]))+'</div></div>' +
+      '<div class="tile"><div class="label">รายจ่ายรวม ปีงบ '+y1+'</div><div class="value" style="color:var(--exp)">'+compact(totExp[y1])+' บาท</div><div class="delta">ปีงบ '+y0+': '+compact(totExp[y0])+' บาท • '+fmtPct(pct(totExp[y0],totExp[y1]))+'</div></div>' +
+      '<div class="tile"><div class="label">สุทธิ (รายรับ-รายจ่าย) ปีงบ '+y1+'</div><div class="value '+(net[y1]>=0?'good':'critical')+'">'+compact(net[y1])+' บาท</div><div class="delta">ปีงบ '+y0+': '+compact(net[y0])+' บาท</div></div>';
+
+    // ---- Chart: one grouped bar-pair per category, all 7 on one shared linear scale ----
+    drawYearBars('chartSvg11', catVals);
+
+    document.getElementById('chartSub11').textContent = basisNote + ' • ' + hs.length + ' แห่ง';
+
+    // ---- Table: category rows + รวมรายรับ/รวมรายจ่าย/สุทธิ, with num-th right-aligned headers ----
+    var thead = '<thead><tr>' +
+      '<th class="rowhead-col">หมวด Quick Method</th>' +
+      '<th class="num-th">ปีงบ '+y0+' (YTD)</th>' +
+      '<th class="num-th">ปีงบ '+y1+' (YTD)</th>' +
+      '<th class="num-th">ผลต่าง (บาท)</th>' +
+      '<th class="num-th">ผลต่าง (%)</th>' +
+      '</tr></thead>';
+    function rowHtml(label, v0, v1, cls){
+      var d = v1-v0, p = pct(v0,v1);
+      return '<tr'+(cls?' class="'+cls+'"':'')+'>' +
+        '<td class="rowhead-col">'+label+'</td>' +
+        '<td>'+thb(v0,0)+'</td><td>'+thb(v1,0)+'</td>' +
+        '<td'+(d<0?' style="color:var(--critical)"':'')+'>'+(d>=0?'+':'')+thb(d,0)+'</td>' +
+        '<td'+(d<0?' style="color:var(--critical)"':'')+'>'+fmtPct(p)+'</td>' +
+      '</tr>';
+    }
+    var bodyRows = '';
+    revCats.forEach(function(c){ bodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
+    bodyRows += rowHtml('รวมรายรับ', totRev[y0], totRev[y1], 'median-row');
+    expCats.forEach(function(c){ bodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
+    bodyRows += rowHtml('รวมรายจ่าย', totExp[y0], totExp[y1], 'median-row');
+    bodyRows += rowHtml('สุทธิ (รายรับ-รายจ่าย)', net[y0], net[y1], 'median-row');
+    document.getElementById('dataTable11').innerHTML = thead + '<tbody>' + bodyRows + '</tbody>';
+    document.getElementById('tableTitle11').textContent = 'ตารางเปรียบเทียบยอดสะสม (YTD) รายปีงบประมาณ';
+    document.getElementById('tableSub11').textContent = basisNote;
+
+    // ---- stash for the shared export/print buttons (see PANELS[11] in buildTabPanels) ----
+    var panel = PANELS[11];
+    panel._chartLabel = 'เปรียบเทียบรายปี';
+    panel._exportPeriodLabel = 'FY'+y0+'_vs_FY'+y1;
+    panel._chartSplit = false;
+    panel._chartCols = [
+      {key:'label', label:'หมวด Quick Method'},
+      {key:'v0', label:'ปีงบ '+y0+' (YTD)'},
+      {key:'v1', label:'ปีงบ '+y1+' (YTD)'}
+    ];
+    panel._chartRows = catVals.map(function(c){ return {label:c.label, v0:c.v[y0], v1:c.v[y1]}; })
+      .concat([
+        {label:'รวมรายรับ', v0:totRev[y0], v1:totRev[y1]},
+        {label:'รวมรายจ่าย', v0:totExp[y0], v1:totExp[y1]},
+        {label:'สุทธิ (รายรับ-รายจ่าย)', v0:net[y0], v1:net[y1]}
+      ]);
+
+    // ---- Second card: the FOCUSED hospital's own year-over-year comparison (per category) — reads
+    // the same global "โฟกัส รพ." field every other tab uses to pin/highlight one hospital, so a
+    // director types their own hospital once (or clicks it in any other tab's table/chart) and it
+    // carries over here automatically. Shown only when a focus hospital is actually set. ----
+    var hospTitleEl = document.getElementById('hospCompareTitle11');
+    var hospSubEl = document.getElementById('hospCompareSub11');
+    var hospTableEl = document.getElementById('hospCompareTable11');
+    var hospSvgEl = document.getElementById('hospCompareSvg11');
+    var focusHosp = STATE.focus ? (YEARS_DATA['2569'].hospById[STATE.focus] || YEARS_DATA['2568'].hospById[STATE.focus]) : null;
+
+    if(!focusHosp){
+      hospTitleEl.textContent = 'เปรียบเทียบรายปีของโรงพยาบาลที่โฟกัส';
+      hospSubEl.textContent = 'พิมพ์ชื่อหรือรหัสโรงพยาบาลที่ช่อง "โฟกัส รพ." ด้านบนสุดของหน้า เพื่อดูข้อมูลรายแห่งของโรงพยาบาลนั้นเทียบ 2 ปีงบที่นี่';
+      hospSvgEl.innerHTML = '';
+      hospTableEl.innerHTML = '';
+    } else {
+      var hospCatVals = cats.map(function(c){
+        var v = {}; FY_YEARS.forEach(function(y){ v[y]=catForOrg(y, focusHosp.orgId, c.id); });
+        return {id:c.id, label:c.label, kind:c.kind, v:v};
+      });
+      var hospRevCats = hospCatVals.filter(function(c){return c.kind==='revenue';});
+      var hospExpCats = hospCatVals.filter(function(c){return c.kind==='expense';});
+      var hospTotRev={}, hospTotExp={}, hospNet={};
+      FY_YEARS.forEach(function(y){
+        hospTotRev[y]=sumOf(hospRevCats,y); hospTotExp[y]=sumOf(hospExpCats,y); hospNet[y]=hospTotRev[y]-hospTotExp[y];
+      });
+
+      hospTitleEl.textContent = focusHosp.name + ' — เปรียบเทียบรายปีงบประมาณ (2568 เทียบ 2569)';
+      hospSubEl.textContent = basisNote;
+
+      drawYearBars('hospCompareSvg11', hospCatVals);
+
+      var hospBodyRows = '';
+      hospRevCats.forEach(function(c){ hospBodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
+      hospBodyRows += rowHtml('รวมรายรับ', hospTotRev[y0], hospTotRev[y1], 'median-row');
+      hospExpCats.forEach(function(c){ hospBodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
+      hospBodyRows += rowHtml('รวมรายจ่าย', hospTotExp[y0], hospTotExp[y1], 'median-row');
+      hospBodyRows += rowHtml('สุทธิ (รายรับ-รายจ่าย)', hospNet[y0], hospNet[y1], 'median-row');
+      hospTableEl.innerHTML = thead + '<tbody>' + hospBodyRows + '</tbody>';
+    }
+  }
+
   /* ---------- boot / controls ---------- */
   function buildControls(){
     var el = document.getElementById('app');
@@ -1137,6 +1444,11 @@
     el.innerHTML =
       '<div class="panel">' +
         '<div class="row">' +
+          '<div class="field w160" id="yearField"><label>ปีงบประมาณ</label>' +
+            '<div class="seg" id="yearSeg">' + FY_YEARS.map(function(y){
+              return '<button data-v="'+y+'" aria-pressed="'+(y===STATE.year)+'">'+y+'</button>';
+            }).join('') + '</div>' +
+          '</div>' +
           '<div class="field"><label>โหมดเปรียบเทียบ</label>' +
             '<div class="seg" id="filterModeSeg"><button data-v="filter" aria-pressed="true">ตามตัวกรอง</button><button data-v="manual" aria-pressed="false">เลือก รพ. เอง</button></div>' +
           '</div>' +
@@ -1166,7 +1478,21 @@
       '<div class="tabpanel" id="panel7" hidden></div>' +
       '<div class="tabpanel" id="panel8" hidden></div>' +
       '<div class="tabpanel" id="panel9" hidden></div>' +
-      '<div class="tabpanel" id="panel10" hidden></div>';
+      '<div class="tabpanel" id="panel10" hidden></div>' +
+      '<div class="tabpanel" id="panel11" hidden></div>';
+
+    document.getElementById('yearSeg').addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      var newYear = b.dataset.v;
+      if(newYear===STATE.year) return;
+      STATE.year = newYear;
+      DATA = YEARS_DATA[STATE.year];
+      updateMetaFooter();
+      var keepTab = (STATE.tab>=1 && STATE.tab<=10) ? STATE.tab : 1;
+      STATE.tab = keepTab;
+      buildControls();
+      switchTab(keepTab);
+    });
 
     document.getElementById('filterModeSeg').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
@@ -1888,27 +2214,62 @@
     });
 
     [1,2,3,4,5,6,7,8,9,10].forEach(function(t){ initPanel(PANELS[t]); });
+
+    // Tab11 — "เปรียบเทียบรายปี": unlike tabs 1-10 (which always read the single currently-selected
+    // fiscal year via the global DATA/PANELS[1..10]), this tab always reads BOTH fiscal years directly
+    // from YEARS_DATA, independent of the "ปีงบประมาณ" selector above — so it's rebuilt here (inside
+    // buildTabPanels, which reruns on every year switch) but its own render logic (renderYearCompare,
+    // defined below) never looks at STATE.year. PANELS[11] is a minimal stand-in object (not a real
+    // tree panel — no roots/kind/nodesById) that exists purely so the shared export/print click
+    // handler (which looks up PANELS[tabId]) and exportTableCsv/exportChartCsv (which only touch
+    // panel.tabId + the panel._chartRows/_chartCols/_chartLabel stashed by renderYearCompare) work
+    // for this tab exactly like they do for tabs 1-10, with zero special-casing there.
+    PANELS[11] = {tabId:11};
+    // Second chart card — the FOCUSED hospital's own year-over-year comparison (per-category), shown
+    // beneath the cohort-level chart/table. Uses the existing global "โฟกัส รพ." field (STATE.focus) so
+    // a director can type/pick their own hospital once and see it on every tab, this one included,
+    // rather than adding a second, redundant hospital picker just for this card.
+    var hospCompareMidHtml =
+      '<div class="card" id="hospCompareCard11">' +
+        '<div class="card-head">' +
+          '<div><h2 id="hospCompareTitle11">เปรียบเทียบรายปีของโรงพยาบาลที่โฟกัส</h2><p id="hospCompareSub11"></p></div>' +
+          '<div class="field"><label>ส่งออก</label><div class="export-btns">' +
+            '<button type="button" class="export-btn" id="hospCompareExportPdf" title="พิมพ์/บันทึกกราฟและตารางนี้เป็น PDF">⬇ PDF</button>' +
+          '</div></div>' +
+        '</div>' +
+        '<div class="chartwrap"><svg id="hospCompareSvg11"></svg></div>' +
+        '<div class="tablewrap"><table id="hospCompareTable11"></table></div>' +
+        '<div class="legend" id="hospCompareLegend11">' +
+          '<span><i class="swatch" style="background:var(--series3)"></i>ปีงบ 2568</span>' +
+          '<span><i class="swatch" style="background:var(--rev)"></i>ปีงบ 2569</span>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('panel11').innerHTML = buildPanelDom(11,
+      'เปรียบเทียบรายปีงบประมาณ (2568 เทียบ 2569)',
+      '',
+      '', hospCompareMidHtml, true);
+    document.getElementById('legend11').innerHTML =
+      '<span><i class="swatch" style="background:var(--series3)"></i>ปีงบ 2568</span>' +
+      '<span><i class="swatch" style="background:var(--rev)"></i>ปีงบ 2569</span>';
+    document.getElementById('hospCompareExportPdf').addEventListener('click', function(){ printCard('hospCompareCard11'); });
   }
 
   function switchTab(id){
     STATE.tab = id;
     document.querySelectorAll('.tab').forEach(function(b){ b.setAttribute('aria-selected', String(parseInt(b.dataset.tab,10)===id)); });
-    for(var i=1;i<=10;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
+    for(var i=1;i<=11;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
     renderActiveTab();
   }
 
   function renderActiveTab(){
     syncFocusInput();
+    if(STATE.tab===11){ renderYearCompare(); return; }
     renderPanel(PANELS[STATE.tab]);
   }
 
-  fetch('dashboard_data.json').then(function(r){ return r.json(); }).then(function(json){
-    DATA = json;
-    DATA.hospById = {};
-    DATA.hospitals.forEach(function(h){ DATA.hospById[h.orgId]=h; });
-
+  function updateMetaFooter(){
     document.getElementById('metaLine').textContent =
-      DATA.meta.region + ' • ' + DATA.hospitals.length + ' โรงพยาบาล • ข้อมูลตั้งแต่ ' + DATA.periods[0].label + ' ถึง ' + DATA.periods[DATA.periods.length-1].label + ' (ปีงบประมาณ 2569)';
+      DATA.meta.region + ' • ' + DATA.hospitals.length + ' โรงพยาบาล • ข้อมูลตั้งแต่ ' + DATA.periods[0].label + ' ถึง ' + DATA.periods[DATA.periods.length-1].label + ' (ปีงบประมาณ '+STATE.year+')';
 
     document.getElementById('footNote').innerHTML =
       '<b>ที่มาข้อมูล</b> — ระบบ Quick Method กองเศรษฐกิจสุขภาพ (ไฟล์ '+DATA.meta.source.split(' - ')[1]+') กรองเฉพาะ '+DATA.meta.region+' | ' +
@@ -1916,6 +2277,7 @@
       '<b>สิทธิการรักษา</b> (แท็บ OPD/IPD): UC / ประกันสังคม / ข้าราชการ / ต่างด้าว / ไร้รัฐ / อื่นๆ | ' +
       '<b>ยอดสะสม (YTD)</b> คำนวณจากยอดยกไป (EndCr/EndDr) และ <b>ยอดรายเดือน</b> จากยอดเดินบัญชี (Dr/Cr) ของแต่ละเดือน | ' +
       '<b>ตัวกรอง</b>: เลือกจังหวัด/ขนาด (A–F3)/กลุ่มระดับบริการร่วมกันได้ในโหมด "ตามตัวกรอง" หรือสลับเป็น "เลือก รพ. เอง" เพื่อระบุรายแห่ง • "โฟกัส รพ." ปักหมุดโรงพยาบาลไว้คอลัมน์ซ้ายสุดของตารางแม้อยู่นอกกลุ่มที่กรองไว้ | ' +
+      '<b>ปีงบประมาณ</b>: สลับดูข้อมูลรายปีได้ที่ตัวกรองด้านบน (2568/2569) — แท็บ "เปรียบเทียบรายปี" แสดงทั้งสองปีพร้อมกันเสมอไม่ขึ้นกับตัวเลือกนี้ | ' +
       '<b>ประชากร UC</b> อ้างอิง ปชก.UC ณ 1 เม.ย. 2568 จากไฟล์กลุ่มบริการ | ' +
       '<b>กลุ่ม F2 ปรับใหม่</b>: แบ่งจากเดิม "F2 P≤30,000" เป็น <b>F2 P&lt;15,000</b> และ <b>F2 P15,000–30,000</b> ตามประชากร UC จริง (กลุ่ม F2 P30,000–60,000 เดิมไม่เปลี่ยนแปลง) | ' +
       'จัดทำ ' + DATA.meta.generated +
@@ -1924,7 +2286,22 @@
         'นายแพทย์ชำนาญการ (ด้านเวชกรรม)<br>' +
         'ปฏิบัติหน้าที่ผู้อำนวยการ <a href="https://www.songkwaehospital.com/" target="_blank" rel="noopener">โรงพยาบาลสองแคว</a> อำเภอสองแคว จังหวัดน่าน' +
       '</div>';
+  }
 
+  Promise.all([
+    fetch('dashboard_data.json').then(function(r){ return r.json(); }),
+    fetch('dashboard_data_2568.json').then(function(r){ return r.json(); })
+  ]).then(function(results){
+    var byYear = {'2569': results[0], '2568': results[1]};
+    FY_YEARS.forEach(function(y){
+      var j = byYear[y];
+      j.hospById = {};
+      j.hospitals.forEach(function(h){ j.hospById[h.orgId]=h; });
+      YEARS_DATA[y] = j;
+    });
+    DATA = YEARS_DATA[STATE.year];
+
+    updateMetaFooter();
     buildControls();
     switchTab(1);
   }).catch(function(err){
