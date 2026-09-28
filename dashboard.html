@@ -153,7 +153,7 @@
   th button{font:inherit; font-weight:700; color:var(--text-secondary); background:transparent; border:none; padding:9px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap;}
   th button:hover{color:var(--text-primary);}
   th.rowhead-col{position:sticky; left:0; z-index:4; background:var(--surface-2); text-align:left;}
-  /* Numeric column headers (e.g. Tab10's ตารางสรุป MOE): right-align the <th> itself, and make its
+  /* Numeric column headers (e.g. Tab7's ตารางสรุป MOE): right-align the <th> itself, and make its
      <button> fill the cell + right-justify its own flex content, so the header label sits directly
      above the right-aligned numbers in the <td>s below instead of defaulting to th's centered text. */
   th.num-th{text-align:right;}
@@ -275,39 +275,39 @@
 
   var TABS = [
     {id:1, label:"ภาพรวม"},
-    {id:2, label:"รายได้ OPD"},
-    {id:3, label:"รายได้ IPD"},
-    {id:4, label:"รายจ่าย LC"},
-    {id:5, label:"รายจ่าย MC"},
-    {id:6, label:"รายได้อื่น (OthRev)"},
-    {id:7, label:"รายได้สม่ำเสมอ (ไม่รวมเหมาจ่าย)"},
-    {id:8, label:"รายจ่ายประจำ(เงินบำรุง)"},
-    {id:9, label:"สรุป ฉ.11/ฉ.12"},
-    {id:10, label:"MOE (กองเศรษฐ)"},
-    {id:11, label:"เปรียบเทียบรายปี"}
+    {id:2, label:"รายได้"},
+    {id:3, label:"รายจ่าย"},
+    {id:4, label:"ต้นทุนรายจ่าย(บริการ) ใช้ไป"},
+    {id:5, label:"สรุปค่ารักษาตามจ่ายทุกสิทธิ"},
+    {id:6, label:"สรุป ฉ.11/ฉ.12"},
+    {id:7, label:"MOE (กองเศรษฐ)"}
   ];
   var LEVELS = ['A','S','M1','M2','F1','F2','F3'];
   var FY_YEARS = ['2568','2569'];   // fiscal years loaded into YEARS_DATA — order = display order everywhere
 
   var STATE = {
     tab: 1,
-    year: '2569',                 // selected fiscal year for tabs 1-10 — "2568" | "2569" (Tab11 always shows both)
+    year: '2569',                 // selected fiscal year for tabs 1-10 — "2568" | "2569" (Tab8 always shows both)
     filterMode: "filter",       // "filter" | "manual"
-    province: "", level: "", group: "",
+    province: "น่าน", level: "F2", group: "",
     manualSet: {},               // orgId -> true
-    focus: "",                   // orgId pinned/highlighted (may be outside the filtered cohort)
+    focus: "11183",              // orgId pinned/highlighted (may be outside the filtered cohort) — default: รพ.สองแคว
     lcFund: "all",                // "all" | "self" (เงินบำรุง) | "budget" (เงินงบประมาณ) — Labor Cost tab only
+    includeDeprBadDebt: false,    // Tab3 (รายจ่าย) only — "รวมค่าเสื่อม/หนี้สูญ" checkbox; default OFF (excluded), per user request; off hides P24+P241+ค่าจำหน่าย
+    excludeSalaryBudgetRev: true, // Tab2 (รายได้) only — "ไม่นับรายได้เงินเดือนและเงินงบประมาณ" checkbox; default ON, hides P11 + 4 named P12 items
+    excludeUcopVarianceRev: true, // Tab2 (รายได้) only — "ไม่นับรายได้จาก ส่วนต่างค่ารักษาตามจ่าย UC OP" checkbox; default ON, hides the 2 named P04 items
+    excludeNonCashAssetRev: true, // Tab2 (รายได้) only — "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน" checkbox; default ON, hides the 2 named OthRev items (P10/P12)
     avgView: {},                  // tabId -> "avg" — per-tab "หารเฉลี่ยรายเดือน" toggle (panel.avgToggle tabs only)
     period: null,
     metric: "ytd", basis: "raw",
-    chartSel: {1:"TOTAL_REV", 2:"TOTAL_OPD", 3:"TOTAL_IPD", 4:"TOTAL_LC", 5:"TOTAL_MC", 6:"TOTAL_OTHREV", 7:"TOTAL_REGULAR", 8:"TOTAL_RECURRING", 9:"TOTAL_CHOR1112", 10:"TOTAL_MOE"},
-    sortKey: {1:"TOTAL_REV",2:"TOTAL_OPD",3:"TOTAL_IPD",4:"TOTAL_LC",5:"TOTAL_MC",6:"TOTAL_OTHREV",7:"TOTAL_REGULAR",8:"TOTAL_RECURRING",9:"TOTAL_CHOR1112",10:"TOTAL_MOE"},
-    sortDir: {1:-1,2:-1,3:-1,4:-1,5:-1,6:-1,7:-1,8:-1,9:-1,10:-1},
-    moeSort: {key:'annual', dir:-1}   // Tab10's "ตารางสรุป MOE รายปี" — independent sort state (hospital rows, not the transposed item table)
+    chartSel: {1:"TOTAL_REV", 2:"TOTAL_PLANREV", 3:"TOTAL_PLANEXP", 4:"TOTAL_COSTUSED", 5:"TOTAL_CLAIMPAY", 6:"TOTAL_CHOR1112", 7:"TOTAL_MOE"},
+    sortKey: {1:"TOTAL_REV",2:"TOTAL_PLANREV",3:"TOTAL_PLANEXP",4:"TOTAL_COSTUSED",5:"TOTAL_CLAIMPAY",6:"TOTAL_CHOR1112",7:"TOTAL_MOE"},
+    sortDir: {1:-1,2:-1,3:-1,4:-1,5:-1,6:-1,7:-1},
+    moeSort: {key:'annual', dir:-1}   // Tab7's "ตารางสรุป MOE รายปี" — independent sort state (hospital rows, not the transposed item table)
   };
 
   var DATA = null;              // the currently-selected fiscal year's dataset (tabs 1-10 read this)
-  var YEARS_DATA = {};          // fyear string -> full dataset, for every fiscal year loaded (Tab11 reads this directly)
+  var YEARS_DATA = {};          // fyear string -> full dataset, for every fiscal year loaded (Tab8 reads this directly)
   var PANELS = {}; // built after data loads
 
   /* ---------- formatting helpers ---------- */
@@ -434,7 +434,7 @@
     if(!rows || !rows.length){ showToast('ไม่มีข้อมูลกราฟให้ส่งออกในขณะนี้'); return; }
     var header, body;
     if(panel._chartCols){
-      // generic column-mapped shape (e.g. Tab11's year-comparison chart, not a per-hospital bar) —
+      // generic column-mapped shape (e.g. Tab8's year-comparison chart, not a per-hospital bar) —
       // panel._chartCols = [{key,label}, ...], each row an object keyed the same way.
       header = panel._chartCols.map(function(c){ return c.label; });
       body = rows.map(function(r){ return panel._chartCols.map(function(c){ return r[c.key]; }); });
@@ -498,10 +498,37 @@
     var bucket = source==='qm' ? pd.qm : source==='payer' ? pd.payer : pd.sub;
     return bucket[id] || [0,0];
   }
+  // A leaf's raw value, honoring node.signFlip (per user request 2026-09-28: 2 items re-shown under
+  // Tab2's Planfin P04 branch — originally coded/stored as OthExp — need the opposite sign there to
+  // match the sign convention of the source Access report; every other use of the same 2 ids
+  // elsewhere in the dashboard, e.g. rootPayUC/Tab5, reads its OWN leaf object with no signFlip set,
+  // so this only ever changes the Tab2 Planfin display).
+  function rawForNode(node, orgId){
+    var r = rawFor(node.source, orgId, node.id);
+    return node.signFlip ? [-r[0], -r[1]] : r;
+  }
   /* Generic recursive node value: a "group" node (has kids) sums its children; a "leaf" node reads
      straight from the raw data bucket. This is what lets tabs 2/3 nest item -> payer -> OPD/IPD total
      while tabs 1/4/5/6 stay a flat total -> item tree, all through the same function. */
   function nodeIncluded(panel, node){
+    // Tab3 "รวมค่าเสื่อม/หนี้สูญ" checkbox, per user request: when off, drop the entire P24 (ค่าเสื่อม
+    // ราคาและค่าตัดจำหน่าย) and P241 (หนี้สูญและสงสัยจะสูญ) Plan_ID branches, PLUS any individually
+    // tagged leaf (node.deprBadDebt — e.g. the ค่าจำหน่าย items nested under P25) from every total/
+    // chart/table/export on this tab — checked here (not just in the table's row filter) so it also
+    // cuts these out of compositeFor's recursive sum and out of the chart-category dropdown
+    // (buildCatSelect already calls nodeIncluded at every depth), not only what's visibly listed.
+    if(panel.tabId===3 && !STATE.includeDeprBadDebt && (node.id==='PLAN_P24' || node.id==='PLAN_P241' || node.deprBadDebt)) return false;
+    // Tab2 "ไม่นับรายได้เงินเดือนและเงินงบประมาณ" checkbox, per user request: when on, drop the entire
+    // P11 (บัญชีรายได้ระหว่างหน่วยงาน - หน่วยงานรับเงินงบบุคลากรจากรัฐบาล) Plan_ID branch, PLUS 4 named
+    // items nested under P12 (node.salaryBudgetRev) from every total/chart/table/export on this tab.
+    if(panel.tabId===2 && STATE.excludeSalaryBudgetRev && (node.id==='PLAN_P11' || node.salaryBudgetRev)) return false;
+    // Tab2 "ไม่นับรายได้จาก ส่วนต่างค่ารักษาตามจ่าย UC OP" checkbox, per user request: when on, drop the
+    // 2 named P04 items (node.ucopVarianceRev — the same 2 ids that carry signFlip on this tab).
+    if(panel.tabId===2 && STATE.excludeUcopVarianceRev && node.ucopVarianceRev) return false;
+    // Tab2 "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน" checkbox, per user request: when on, drop the
+    // 2 named items (node.nonCashAssetRev) — รายได้จากการรับบริจาค-สินทรัพย์อื่น (P12) and รายได้สนับสนุน
+    // ยาและอื่น ๆ (P10) — from every total/chart/table/export on this tab.
+    if(panel.tabId===2 && STATE.excludeNonCashAssetRev && node.nonCashAssetRev) return false;
     if(!panel.fundFilterable || STATE.lcFund==='all') return true;
     if(!node.fund) return true; // group nodes carry no fund tag themselves — only their leaves do
     return node.fund===STATE.lcFund;
@@ -517,11 +544,12 @@
       });
       return [m,y];
     }
-    return rawFor(node.source, orgId, node.id);
+    return rawForNode(node, orgId);
   }
   function fundSuffix(panel){
     if(!panel.fundFilterable || STATE.lcFund==='all') return '';
-    return STATE.lcFund==='self' ? ' — เฉพาะเงินบำรุง' : ' — เฉพาะเงินงบประมาณ';
+    if(STATE.lcFund==='self') return ' — เฉพาะเงินบำรุง';
+    return ' — เฉพาะ'+(panel.budgetFundLabel || 'เงินงบประมาณ');
   }
   function valFor(panel, orgId, id){
     var raw = compositeFor(panel, orgId, id);
@@ -537,7 +565,7 @@
      (yd) + period key instead of the global DATA/STATE.period, so a value from the OTHER loaded fiscal
      year can be fetched without disturbing any existing single-year code path. Periods are matched by
      "same elapsed fiscal-month position" (periodIndexIn), not by calendar-month string — the same
-     approach already used by Tab11's cutoffPeriod logic — since a still-running fiscal year never lines
+     approach already used by Tab8's cutoffPeriod logic — since a still-running fiscal year never lines
      up month-for-month against a completed one. */
   function otherYear(){
     var others = FY_YEARS.filter(function(y){ return y!==STATE.year; });
@@ -554,6 +582,10 @@
     var bucket = source==='qm' ? pd.qm : source==='payer' ? pd.payer : pd.sub;
     return bucket[id] || [0,0];
   }
+  function rawForYearNode(node, yd, periodKey, orgId){
+    var r = rawForYear(yd, periodKey, node.source, orgId, node.id);
+    return node.signFlip ? [-r[0], -r[1]] : r;
+  }
   function compositeForYear(panel, yd, periodKey, orgId, id){
     var node = panel.nodesById[id];
     if(!node) return [0,0];
@@ -565,7 +597,7 @@
       });
       return [m,y];
     }
-    return rawForYear(yd, periodKey, node.source, orgId, node.id);
+    return rawForYearNode(node, yd, periodKey, orgId);
   }
   function pickMetricValueForYear(panel, yd, periodKey, raw){
     if(isAvgOn(panel)){
@@ -608,7 +640,7 @@
       });
       return {self:self, budget:budget};
     }
-    var v = pickMetricValue(panel, rawFor(node.source, orgId, node.id));
+    var v = pickMetricValue(panel, rawForNode(node, orgId));
     if(node.fund==='self') return {self:v, budget:0};
     if(node.fund==='budget') return {self:0, budget:v};
     return {self:0, budget:0};
@@ -623,7 +655,7 @@
     return {self:r.self/h.ucPop, budget:r.budget/h.ucPop};
   }
 
-  // MOE (Tab10) summary stats for one hospital: mean, population SD, mean+SD and (mean+SD)*12,
+  // MOE (Tab7) summary stats for one hospital: mean, population SD, mean+SD and (mean+SD)*12,
   // computed from that hospital's own ACTUAL monthly figures (not the YTD/N "average view" toggle,
   // which assumes uniform monthly spending) over the months elapsed so far this fiscal year, up to
   // and including the currently selected ช่วงเวลา period — same "elapsed months" window the
@@ -685,13 +717,15 @@
      whose own kids are the real Quick Method leaf line items (tabs 2,3 — two levels). compositeFor()
      above walks this tree recursively so the same code renders both shapes.
      ============================================================ */
-  function makeLeaf(id, label, kind, source, fund){ return {id:id, label:label, kind:kind, source:source, kids:[], fund:fund}; }
+  function makeLeaf(id, label, kind, source, fund, signFlip){ return {id:id, label:label, kind:kind, source:source, kids:[], fund:fund, signFlip:signFlip}; }
   function makeGroup(id, label, kind, kids, groupLabel){ return {id:id, label:label, kind:kind, kids:kids||[], groupLabel:groupLabel}; }
   function indexNodes(map, node){ map[node.id]=node; (node.kids||[]).forEach(function(k){ indexNodes(map,k); }); }
   function flattenTree(roots){
     var out=[];
     function walk(node, level){
-      out.push({id:node.id, label:node.label, kind:node.kind, level:level, isLeaf: !(node.kids&&node.kids.length)});
+      if(!node.hidden){
+        out.push({id:node.id, label:node.label, kind:node.kind, level:level, isLeaf: !(node.kids&&node.kids.length)});
+      }
       (node.kids||[]).forEach(function(k){ walk(k, level+1); });
     }
     roots.forEach(function(r){ walk(r,0); });
@@ -748,7 +782,8 @@
         var any = false;
         (function walk(node, depth){
           node.kids.forEach(function(k){
-            if(panel.fundFilterable && !nodeIncluded(panel,k)) return;
+            if(k.hidden) return;
+            if(!nodeIncluded(panel,k)) return;
             var opt = document.createElement('option'); opt.value=k.id;
             var prefix = depth===1 ? '－ ' : ('　'.repeat(depth-1)+'· ');
             opt.textContent = prefix + k.label;
@@ -1044,20 +1079,59 @@
       '</tr></thead>';
 
     var rowSpec = panel.fundFilterable && STATE.lcFund!=='all'
-      // group rows (level 0, or any subgroup header — no fund tag of their own) always pass through;
-      // only leaf rows are filtered by fund. A group whose matching-fund total is 0 still gets dropped
-      // right below by the all-zero-row filter, so this never shows an empty subgroup header.
-      ? panel.rowSpec.filter(function(r){ var n=panel.nodesById[r.id]; return r.level===0 || !r.isLeaf || (n && n.fund===STATE.lcFund); })
+      // group rows (level 0, or any subgroup header — no fund tag of their own) always pass through.
+      // A leaf row is filtered by fund ONLY if it actually carries a fund tag that disagrees with the
+      // selected one — a leaf with NO fund tag (e.g. every MC/CC/OthExp item on the expense/Planfin
+      // tab — see planfinFundFor's "always pass any fund filter" contract) must always be shown here
+      // too, matching nodeIncluded()'s same "!node.fund -> always included" rule used to compute every
+      // group's totals above; hiding untagged leaves while still summing them into the header row was
+      // the bug (headers showed a total, but the individual lines behind it had vanished). A group
+      // whose matching-fund total is 0 still gets dropped right below by the all-zero-row filter, so
+      // this never shows an empty subgroup header.
+      ? panel.rowSpec.filter(function(r){ var n=panel.nodesById[r.id]; return r.level===0 || !r.isLeaf || !n || !n.fund || n.fund===STATE.lcFund; })
       : panel.rowSpec;
+
+    // Tab3 "รวมค่าเสื่อม/หนี้สูญ" checkbox, per user request: when off, hide the P24/P241 group-header
+    // rows themselves plus every leaf tagged deprBadDebt under them (nodeIncluded() above already
+    // drops the same branch from every total/chart/export — this keeps the visible table in sync).
+    if(panel.tabId===3 && !STATE.includeDeprBadDebt){
+      rowSpec = rowSpec.filter(function(r){
+        if(r.id==='PLAN_P24' || r.id==='PLAN_P241') return false;
+        var n = panel.nodesById[r.id];
+        return !(n && n.deprBadDebt);
+      });
+    }
+
+    // Tab2's three "ไม่นับ..." checkboxes, per user request: when on, hide the corresponding group-
+    // header/leaf rows (nodeIncluded() above already drops the same branches from every total/chart/
+    // export — this keeps the table in sync).
+    if(panel.tabId===2 && (STATE.excludeSalaryBudgetRev || STATE.excludeUcopVarianceRev || STATE.excludeNonCashAssetRev)){
+      rowSpec = rowSpec.filter(function(r){
+        if(STATE.excludeSalaryBudgetRev && r.id==='PLAN_P11') return false;
+        var n = panel.nodesById[r.id];
+        if(STATE.excludeSalaryBudgetRev && n && n.salaryBudgetRev) return false;
+        if(STATE.excludeUcopVarianceRev && n && n.ucopVarianceRev) return false;
+        if(STATE.excludeNonCashAssetRev && n && n.nonCashAssetRev) return false;
+        return true;
+      });
+    }
 
     function isZeroish(v){ return v===null || v===undefined || isNaN(v) || Math.abs(v) < 0.005; }
     var rowsComputed = rowSpec.map(function(r){
       var vals = hospitals.map(function(h){ return valFor(panel, h.orgId, r.id); });
       var medVals = groupHs.map(function(h){ return valFor(panel, h.orgId, r.id); });
-      return {r:r, vals:vals, med:median(medVals)};
-    // a line item that is 0 for every hospital currently shown carries no comparative information —
-    // drop it from view (the raw underlying data is untouched, this only affects what's rendered).
-    }).filter(function(rc){ return !rc.vals.every(isZeroish); });
+      var focusVal = STATE.focus ? valFor(panel, STATE.focus, r.id) : null;
+      return {r:r, vals:vals, med:median(medVals), focusVal:focusVal};
+    // Two independent reasons to hide a row (raw underlying data untouched — this only affects what's
+    // rendered): (1) the line item is 0 for every hospital currently shown — no comparative info; or
+    // (2) the group median is 0 AND the pinned "โฟกัส รพ." hospital's own value is also 0 — irrelevant
+    // to both the group-level comparison and the one hospital being drilled into, even if some other,
+    // unfocused hospital in the table happens to be nonzero.
+    }).filter(function(rc){
+      if(rc.vals.every(isZeroish)) return false;
+      if(STATE.focus && isZeroish(rc.med) && isZeroish(rc.focusVal)) return false;
+      return true;
+    });
 
     var bodyRows = rowsComputed.map(function(rc){
       var r = rc.r, vals = rc.vals, med = rc.med;
@@ -1115,7 +1189,7 @@
       (showOtherYearCol ? ' • คอลัมน์สีเหลืองอำพันคือค่าของโรงพยาบาลที่โฟกัสเองในปีงบ '+oyYear+' (ตำแหน่งเดือนสะสมเดียวกัน)' : '');
   }
 
-  // Tab10-only ("panel.moeIds" set): a separate summary card, hospital-per-row (not the transposed
+  // Tab7-only ("panel.moeIds" set): a separate summary card, hospital-per-row (not the transposed
   // item×hospital layout renderPanelTable draws), showing each hospital's MOE เฉลี่ยรายเดือน / +1SD /
   // ทั้งปี — kept as its own table rather than folded into the raw-item table above, per explicit
   // user request ("แยกจากตารางข้อมูลดิบที่นำมาคิด").
@@ -1223,208 +1297,6 @@
     renderMoeSummary(panel);
   }
 
-  // Tab11 — "เปรียบเทียบรายปี": always reads both fiscal years directly from YEARS_DATA (never the
-  // global DATA/STATE.year used by tabs 1-10), for whichever hospital cohort the filters above select.
-  // Comparison basis: cumulative YTD figures from each year, both cut off at the SAME elapsed-month
-  // position within their fiscal year (Oct = month 1 ... Sep = month 12) — the position is however many
-  // months of real data the newer year (2569, the still-running year) has so far, so a still-partial
-  // current year is never unfairly compared against a full 12-month prior year.
-  var QM_COMPARE_ORDER = ['OPD','IPD','OthRev','LC','MC','CC','OthExp'];
-  function yearCompareCats(){
-    var canonical = (YEARS_DATA['2569'] && YEARS_DATA['2569'].qmCategories) || (YEARS_DATA['2568'] && YEARS_DATA['2568'].qmCategories) || [];
-    var byId = {}; canonical.forEach(function(c){ byId[c.id]=c; });
-    return QM_COMPARE_ORDER.filter(function(id){ return byId[id]; }).map(function(id){ return byId[id]; });
-  }
-  function renderYearCompare(){
-    var haveBoth = FY_YEARS.every(function(y){ return !!YEARS_DATA[y]; });
-    if(!haveBoth){
-      document.getElementById('chartSvg11').innerHTML='';
-      document.getElementById('chartSub11').textContent = 'กำลังโหลดข้อมูลปีเปรียบเทียบ…';
-      return;
-    }
-    var cats = yearCompareCats();
-    var hs = cohortHospitals();
-
-    // Same elapsed-month cutoff in both years: however many periods FY2569 (the still-running year)
-    // actually has data for so far.
-    var nElapsed = YEARS_DATA['2569'].periods.length;
-    var cutoffPeriod = {};
-    FY_YEARS.forEach(function(y){
-      var periods = YEARS_DATA[y].periods;
-      cutoffPeriod[y] = periods[Math.min(nElapsed, periods.length)-1];
-    });
-
-    function sumCat(y, catId){
-      var pkey = cutoffPeriod[y].key;
-      var yd = YEARS_DATA[y];
-      var sum = 0;
-      hs.forEach(function(h){
-        var d = yd.data[h.orgId] && yd.data[h.orgId][pkey];
-        var v = d && d.qm && d.qm[catId];
-        if(v) sum += v[1]; // index 1 = ytd_value
-      });
-      return sum;
-    }
-    function catForOrg(y, orgId, catId){
-      var pkey = cutoffPeriod[y].key;
-      var yd = YEARS_DATA[y];
-      var d = yd.data[orgId] && yd.data[orgId][pkey];
-      var v = d && d.qm && d.qm[catId];
-      return v ? v[1] : 0; // index 1 = ytd_value
-    }
-    // Shared grouped-bar drawer — used for both the cohort-total chart and the single focused
-    // hospital's own chart below, so the two stay visually/behaviorally identical (same scale-per-
-    // chart approach, same tooltip format, same colors-mean-year convention).
-    function drawYearBars(svgId, rows){
-      var svgEl = document.getElementById(svgId);
-      var rowH=18, pairGap=3, groupGap=16;
-      var n = rows.length;
-      var chartH = n*(rowH*2+pairGap+groupGap)+20;
-      var leftW=190, rightPad=100, width=900, plotW=width-leftW-rightPad;
-      var maxAbs = Math.max.apply(null, rows.map(function(c){return Math.max(Math.abs(c.v[y0]),Math.abs(c.v[y1]));}).concat([1]));
-      var scale = function(v){ return (v/maxAbs)*plotW; };
-      svgEl.setAttribute('viewBox','0 0 '+width+' '+chartH);
-      svgEl.setAttribute('width','100%'); svgEl.setAttribute('height',chartH);
-      svgEl.innerHTML='';
-      var ns='http://www.w3.org/2000/svg';
-      function el(tag,attrs){ var e=document.createElementNS(ns,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
-      svgEl.appendChild(el('line',{x1:leftW,x2:leftW,y1:4,y2:chartH-4,stroke:getCss('--baseline'),'stroke-width':1}));
-      var colorY0 = getCss('--series3'), colorY1 = getCss('--rev');
-      rows.forEach(function(c,i){
-        var groupY = 10+i*(rowH*2+pairGap+groupGap);
-        var label = el('text',{x:leftW-8,y:groupY+rowH+pairGap/2+4,'text-anchor':'end',class:'cat-label'});
-        label.textContent = truncate(c.label,24);
-        svgEl.appendChild(label);
-        [[y0,colorY0,groupY],[y1,colorY1,groupY+rowH+pairGap]].forEach(function(pair){
-          var y=pair[0], color=pair[1], yy=pair[2];
-          var v = c.v[y];
-          var w = Math.max(2, Math.abs(scale(v)));
-          var x = v>=0 ? leftW : leftW-w;
-          var rect = el('rect',{x:x,y:yy,width:w,height:rowH,rx:3,fill:color,opacity:0.88,class:'bar-rect'});
-          svgEl.appendChild(rect);
-          var vlabel = el('text',{x:x+(v>=0?w+6:-6),y:yy+rowH*0.72,'text-anchor':v>=0?'start':'end',class:'bar-label'});
-          vlabel.textContent = compact(v);
-          svgEl.appendChild(vlabel);
-          rect.addEventListener('mousemove', function(evt){ showTip(evt, c.label+'<br>ปีงบ '+y+'<br><b>'+thb(v,0)+'</b> บาท'); });
-          rect.addEventListener('mouseleave', hideTip);
-        });
-      });
-    }
-
-    var catVals = cats.map(function(c){
-      var v = {}; FY_YEARS.forEach(function(y){ v[y]=sumCat(y,c.id); });
-      return {id:c.id, label:c.label, kind:c.kind, v:v};
-    });
-    var revCats = catVals.filter(function(c){return c.kind==='revenue';});
-    var expCats = catVals.filter(function(c){return c.kind==='expense';});
-    function sumOf(list, y){ return list.reduce(function(a,c){return a+c.v[y];},0); }
-    var totRev = {}, totExp = {}, net = {};
-    FY_YEARS.forEach(function(y){ totRev[y]=sumOf(revCats,y); totExp[y]=sumOf(expCats,y); net[y]=totRev[y]-totExp[y]; });
-
-    function pct(oldV, newV){ return oldV ? ((newV-oldV)/Math.abs(oldV)*100) : null; }
-    function fmtPct(p){ return p===null ? '—' : (p>=0?'+':'')+p.toFixed(1)+'%'; }
-    var y0 = FY_YEARS[0], y1 = FY_YEARS[1]; // '2568','2569'
-
-    var basisNote = 'เทียบยอดสะสม (YTD) '+nElapsed+' เดือนแรกของปีงบ ('+cutoffPeriod[y0].label+' ปีงบ '+y0+' เทียบ '+cutoffPeriod[y1].label+' ปีงบ '+y1+')';
-
-    // ---- KPI tiles ----
-    document.getElementById('kpis11').innerHTML =
-      '<div class="tile"><div class="label">จำนวนโรงพยาบาลในกลุ่ม</div><div class="value">'+hs.length+' แห่ง</div><div class="delta">'+cohortLabel()+'</div></div>' +
-      '<div class="tile"><div class="label">รายรับรวม ปีงบ '+y1+'</div><div class="value" style="color:var(--rev)">'+compact(totRev[y1])+' บาท</div><div class="delta">ปีงบ '+y0+': '+compact(totRev[y0])+' บาท • '+fmtPct(pct(totRev[y0],totRev[y1]))+'</div></div>' +
-      '<div class="tile"><div class="label">รายจ่ายรวม ปีงบ '+y1+'</div><div class="value" style="color:var(--exp)">'+compact(totExp[y1])+' บาท</div><div class="delta">ปีงบ '+y0+': '+compact(totExp[y0])+' บาท • '+fmtPct(pct(totExp[y0],totExp[y1]))+'</div></div>' +
-      '<div class="tile"><div class="label">สุทธิ (รายรับ-รายจ่าย) ปีงบ '+y1+'</div><div class="value '+(net[y1]>=0?'good':'critical')+'">'+compact(net[y1])+' บาท</div><div class="delta">ปีงบ '+y0+': '+compact(net[y0])+' บาท</div></div>';
-
-    // ---- Chart: one grouped bar-pair per category, all 7 on one shared linear scale ----
-    drawYearBars('chartSvg11', catVals);
-
-    document.getElementById('chartSub11').textContent = basisNote + ' • ' + hs.length + ' แห่ง';
-
-    // ---- Table: category rows + รวมรายรับ/รวมรายจ่าย/สุทธิ, with num-th right-aligned headers ----
-    var thead = '<thead><tr>' +
-      '<th class="rowhead-col">หมวด Quick Method</th>' +
-      '<th class="num-th">ปีงบ '+y0+' (YTD)</th>' +
-      '<th class="num-th">ปีงบ '+y1+' (YTD)</th>' +
-      '<th class="num-th">ผลต่าง (บาท)</th>' +
-      '<th class="num-th">ผลต่าง (%)</th>' +
-      '</tr></thead>';
-    function rowHtml(label, v0, v1, cls){
-      var d = v1-v0, p = pct(v0,v1);
-      return '<tr'+(cls?' class="'+cls+'"':'')+'>' +
-        '<td class="rowhead-col">'+label+'</td>' +
-        '<td>'+thb(v0,0)+'</td><td>'+thb(v1,0)+'</td>' +
-        '<td'+(d<0?' style="color:var(--critical)"':'')+'>'+(d>=0?'+':'')+thb(d,0)+'</td>' +
-        '<td'+(d<0?' style="color:var(--critical)"':'')+'>'+fmtPct(p)+'</td>' +
-      '</tr>';
-    }
-    var bodyRows = '';
-    revCats.forEach(function(c){ bodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
-    bodyRows += rowHtml('รวมรายรับ', totRev[y0], totRev[y1], 'median-row');
-    expCats.forEach(function(c){ bodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
-    bodyRows += rowHtml('รวมรายจ่าย', totExp[y0], totExp[y1], 'median-row');
-    bodyRows += rowHtml('สุทธิ (รายรับ-รายจ่าย)', net[y0], net[y1], 'median-row');
-    document.getElementById('dataTable11').innerHTML = thead + '<tbody>' + bodyRows + '</tbody>';
-    document.getElementById('tableTitle11').textContent = 'ตารางเปรียบเทียบยอดสะสม (YTD) รายปีงบประมาณ';
-    document.getElementById('tableSub11').textContent = basisNote;
-
-    // ---- stash for the shared export/print buttons (see PANELS[11] in buildTabPanels) ----
-    var panel = PANELS[11];
-    panel._chartLabel = 'เปรียบเทียบรายปี';
-    panel._exportPeriodLabel = 'FY'+y0+'_vs_FY'+y1;
-    panel._chartSplit = false;
-    panel._chartCols = [
-      {key:'label', label:'หมวด Quick Method'},
-      {key:'v0', label:'ปีงบ '+y0+' (YTD)'},
-      {key:'v1', label:'ปีงบ '+y1+' (YTD)'}
-    ];
-    panel._chartRows = catVals.map(function(c){ return {label:c.label, v0:c.v[y0], v1:c.v[y1]}; })
-      .concat([
-        {label:'รวมรายรับ', v0:totRev[y0], v1:totRev[y1]},
-        {label:'รวมรายจ่าย', v0:totExp[y0], v1:totExp[y1]},
-        {label:'สุทธิ (รายรับ-รายจ่าย)', v0:net[y0], v1:net[y1]}
-      ]);
-
-    // ---- Second card: the FOCUSED hospital's own year-over-year comparison (per category) — reads
-    // the same global "โฟกัส รพ." field every other tab uses to pin/highlight one hospital, so a
-    // director types their own hospital once (or clicks it in any other tab's table/chart) and it
-    // carries over here automatically. Shown only when a focus hospital is actually set. ----
-    var hospTitleEl = document.getElementById('hospCompareTitle11');
-    var hospSubEl = document.getElementById('hospCompareSub11');
-    var hospTableEl = document.getElementById('hospCompareTable11');
-    var hospSvgEl = document.getElementById('hospCompareSvg11');
-    var focusHosp = STATE.focus ? (YEARS_DATA['2569'].hospById[STATE.focus] || YEARS_DATA['2568'].hospById[STATE.focus]) : null;
-
-    if(!focusHosp){
-      hospTitleEl.textContent = 'เปรียบเทียบรายปีของโรงพยาบาลที่โฟกัส';
-      hospSubEl.textContent = 'พิมพ์ชื่อหรือรหัสโรงพยาบาลที่ช่อง "โฟกัส รพ." ด้านบนสุดของหน้า เพื่อดูข้อมูลรายแห่งของโรงพยาบาลนั้นเทียบ 2 ปีงบที่นี่';
-      hospSvgEl.innerHTML = '';
-      hospTableEl.innerHTML = '';
-    } else {
-      var hospCatVals = cats.map(function(c){
-        var v = {}; FY_YEARS.forEach(function(y){ v[y]=catForOrg(y, focusHosp.orgId, c.id); });
-        return {id:c.id, label:c.label, kind:c.kind, v:v};
-      });
-      var hospRevCats = hospCatVals.filter(function(c){return c.kind==='revenue';});
-      var hospExpCats = hospCatVals.filter(function(c){return c.kind==='expense';});
-      var hospTotRev={}, hospTotExp={}, hospNet={};
-      FY_YEARS.forEach(function(y){
-        hospTotRev[y]=sumOf(hospRevCats,y); hospTotExp[y]=sumOf(hospExpCats,y); hospNet[y]=hospTotRev[y]-hospTotExp[y];
-      });
-
-      hospTitleEl.textContent = focusHosp.name + ' — เปรียบเทียบรายปีงบประมาณ (2568 เทียบ 2569)';
-      hospSubEl.textContent = basisNote;
-
-      drawYearBars('hospCompareSvg11', hospCatVals);
-
-      var hospBodyRows = '';
-      hospRevCats.forEach(function(c){ hospBodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
-      hospBodyRows += rowHtml('รวมรายรับ', hospTotRev[y0], hospTotRev[y1], 'median-row');
-      hospExpCats.forEach(function(c){ hospBodyRows += rowHtml(c.label, c.v[y0], c.v[y1]); });
-      hospBodyRows += rowHtml('รวมรายจ่าย', hospTotExp[y0], hospTotExp[y1], 'median-row');
-      hospBodyRows += rowHtml('สุทธิ (รายรับ-รายจ่าย)', hospNet[y0], hospNet[y1], 'median-row');
-      hospTableEl.innerHTML = thead + '<tbody>' + hospBodyRows + '</tbody>';
-    }
-  }
-
   /* ---------- boot / controls ---------- */
   function buildControls(){
     var el = document.getElementById('app');
@@ -1475,11 +1347,7 @@
       '<div class="tabpanel" id="panel4" hidden></div>' +
       '<div class="tabpanel" id="panel5" hidden></div>' +
       '<div class="tabpanel" id="panel6" hidden></div>' +
-      '<div class="tabpanel" id="panel7" hidden></div>' +
-      '<div class="tabpanel" id="panel8" hidden></div>' +
-      '<div class="tabpanel" id="panel9" hidden></div>' +
-      '<div class="tabpanel" id="panel10" hidden></div>' +
-      '<div class="tabpanel" id="panel11" hidden></div>';
+      '<div class="tabpanel" id="panel7" hidden></div>';
 
     document.getElementById('yearSeg').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
@@ -1699,8 +1567,15 @@
         members: ['IPD::4301020104.806','IPD::4301020104.808','IPD::4301020104.807'] },
       'IPD::4301020104.109': { label: 'รายได้ค่ารักษาเบิกจ่ายตรงหน่วยงานอื่น-IP (รวม)',
         members: ['IPD::4301020104.109','IPD::4301020104.111','IPD::4301020104.110'] },
+      // Per user request 2026-09-28: the 3rd member here ("ส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงในการจ่าย
+      // ตาม กองทุนประกันสังคม") is coded under OthRev, a DIFFERENT original category than this group's
+      // IPD anchor+2nd member — meaning payment came in HIGHER than what was billed, so it adds to
+      // revenue on its own natural (positive) sign, same as the other 2 members; no signFlip needed.
+      // Confirmed with the user: "สูงกว่า" (IPD::...317, already a member) = billed high, paid less;
+      // "ต่ำกว่า" (this new member) = billed low, paid more. See buildPlanfinRevGroups() below for how
+      // a cross-category member like this is folded into one row without creating a duplicate node.
       'IPD::4301020106.306': { label: 'รายได้ค่ารักษาประกันสังคม IP-เครือข่าย (รวม)',
-        members: ['IPD::4301020106.306','IPD::4301020106.317'] }
+        members: ['IPD::4301020106.306','IPD::4301020106.317','OthRev::4301020106.320'] }
     };
     // Split the flat "ข้าราชการ/สิทธิเบิกจ่ายตรง (CS)" payer group into 2 labeled subgroups —
     // items not listed here (e.g. รายได้ค่าตรวจสุขภาพ-หน่วยงานภาครัฐ) stay flat under CS.
@@ -1764,134 +1639,51 @@
     }
     var opdPayerNodes = buildBucketByPayer('OPD');
     var rootOPD = makeGroup('TOTAL_OPD','รวมรายได้ OPD ทุกสิทธิ','revenue', opdPayerNodes, 'แยกตามสิทธิการรักษา (OPD)');
-    PANELS[2] = finalizePanel(2,'revenue',[rootOPD]);
-    document.getElementById('panel2').innerHTML = buildPanelDom(2,
-      'รายได้ผู้ป่วยนอก (OPD) แยกตามสิทธิการรักษา และรายการจริงในตาราง Quick Method',
-      'คลิกแถวสิทธิ (เช่น บัตรทอง/ประกันสังคม) เพื่อดูรายการย่อยแท้จริงที่ถูกรวมเป็นยอดนั้น');
-
-    // Tab3 — IPD only, same shape
+    // Tab2/Tab3 (old) display removed — replaced by the Planfin-based Tab2/Tab3 below.
+    // opdPayerNodes/ipdPayerNodes/rootOPD/rootIPD stay defined (Tab4->new Tab4 reuses
+    // opdPayerNodes/ipdPayerNodes directly), just no longer rendered as their own tabs.
     var ipdPayerNodes = buildBucketByPayer('IPD');
     var rootIPD = makeGroup('TOTAL_IPD','รวมรายได้ IPD ทุกสิทธิ','revenue', ipdPayerNodes, 'แยกตามสิทธิการรักษา (IPD)');
-    PANELS[3] = finalizePanel(3,'revenue',[rootIPD]);
-    document.getElementById('panel3').innerHTML = buildPanelDom(3,
-      'รายได้ผู้ป่วยใน (IPD) แยกตามสิทธิการรักษา และรายการจริงในตาราง Quick Method',
-      'คลิกแถวสิทธิ (เช่น บัตรทอง/ประกันสังคม) เพื่อดูรายการย่อยแท้จริงที่ถูกรวมเป็นยอดนั้น');
 
-    // Tab4 — Labor Cost, filterable by fund source (เงินบำรุง / เงินงบประมาณ). Most items are grouped
-    // into named subcategories per user request (some nested 2 levels deep); anything not listed
-    // stays flat at the top level.
-    var LC_SUBGROUPS = [
-      { id: 'LC_PERM', label: 'ค่าจ้างประจำ', members: [
-          'LC::5101010113.105','LC::5101010113.106','LC::5101010113.103','LC::5101010113.104',
-          'LC::5101010113.101','LC::5101010113.102',
-          'LC::5101010101.101','LC::5101010101.102','LC::5101010103.102','LC::5101010115.102',
-          'LC::5101010199.101','LC::5101010103.103','LC::5101010115.101','LC::5101010109.102',
-          'LC::5101010109.104','LC::5101010109.103',
-          'LC::5101010109.101','LC::5101010103.101','LC::5101010199.102'
-        ] },
-      { id: 'LC_COMP_OT', label: 'ค่าตอบแทน/โอที', members: [
-          'LC::5104040102.104','LC::5104040102.105','LC::5101010199.103','LC::5104040102.106',
-          'LC::5101010108.101'
-        ] },
-      { id: 'LC_OUTSOURCE', label: 'ค่าจ้างเหมา', members: [
-          'LC::5101010113.107','LC::5101010113.108'
-        ] },
-      { id: 'LC_COMP_CHOR', label: 'ค่าตอบแทน ฉ.11/ฉ.12/เงินไม่ทำเวช', children: [
-          { id: 'LC_COMP_CHOR_1112', label: 'ค่าตอบแทน ฉ.11/ฉ.12', members: [
-              'LC::5104040102.113','LC::5104040102.117','LC::5104040102.114','LC::5104040102.118',
-              'LC::5104040102.111',
-              'LC::5104040102.115','LC::5104040102.116','LC::5104040102.112','LC::5104040102.119'
-            ] },
-          { id: 'LC_COMP_CHOR_NOCLINIC', label: 'ค่าเงินไม่ทำเวช', members: [
-              'LC::5104040102.101','LC::5104040102.102','LC::5104040102.103'
-            ] }
-        ] },
-      { id: 'LC_COMP_OTHER', label: 'ค่าตอบแทนอื่น', members: [
-          'LC::5104040102.120','LC::5104040102.109','LC::5104040102.108','LC::5104040102.110',
-          'LC::5101020114.114','LC::5101020114.107',
-          'LC::5104040102.107'
-        ] },
-      { id: 'LC_OTHER_PERSONNEL', label: 'ค่าใช้จ่ายอื่นด้านบุคลากร', members: [
-          'LC::5102010106.101','LC::5103010103.102','LC::5101020199.106','LC::5101020101.102',
-          'LC::5101020116.102','LC::5103010102.102','LC::5102030199.102','LC::5103010199.102',
-          'LC::5101020106.102','LC::5102010199.102','LC::5101020112.101',
-          'LC::5101020104.101','LC::5101020103.101','LC::5101030205.101','LC::5101020105.101',
-          'LC::5101030207.101',
-          'LC::5101030101.101','LC::5101010116.101','LC::5101020106.101','LC::5101030206.101',
-          'LC::5101030208.101','LC::5102010199.101','LC::5101020108.101','LC::5102030199.101',
-          'LC::5101020101.101','LC::5101020116.101','LC::5101020114.127','LC::5103010199.101',
-          'LC::5103010102.101','LC::5101010116.105','LC::5101030211.101','LC::5103010103.101'
-        ] }
+    // Tab5 — Material Cost. Mostly flat real-leaf items, except a couple of small merge-groups where
+    // 2 related raw line items are combined into one sub-group node with those two as its own line
+    // items (requested so the related costs read together instead of as separate rows):
+    //   MC_LABSCI: "วัสดุวิทยาศาสตร์และการแพทย์ใช้ไป" + "ค่าจ้างตรวจทางห้องปฏิบัติการ (Lab)"
+    //   MC_FOODCONSUME: "วัสดุบริโภคใช้ไป" + "ค่าจ้างเหมาประกอบอาหารผู้ป่วย"
+    var MC_MERGE_GROUPS = [
+      {groupId:'MC_LABSCI', label:'วัสดุวิทยาศาสตร์การแพทย์ + ค่าตรวจ Lab', ids:{'MC::5104030205.104':true, 'MC::5104010112.114':true}},
+      {groupId:'MC_FOODCONSUME', label:'วัสดุบริโภคใช้ไป+ค่าจ้างเหมาประกอบอาหาร', ids:{'MC::5104030205.112':true, 'MC::5104010112.103':true}}
     ];
-    var lcById = {}; (DATA.subItems.LC||[]).forEach(function(it){ lcById[it.id] = it; });
-    var lcConsumed = {};
-    function buildLcNode(def){
-      if(def.members){
-        var leaves = def.members.filter(function(mid){ return lcById[mid]; }).map(function(mid){
-          var it = lcById[mid];
-          lcConsumed[mid] = true;
-          return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund);
-        });
-        return leaves.length ? makeGroup(def.id, def.label, 'expense', leaves) : null;
-      }
-      if(def.children){
-        var kids = def.children.map(buildLcNode).filter(function(k){ return k; });
-        return kids.length ? makeGroup(def.id, def.label, 'expense', kids) : null;
-      }
+    function mcMergeGroupFor(id){
+      for(var i=0;i<MC_MERGE_GROUPS.length;i++){ if(MC_MERGE_GROUPS[i].ids[id]) return MC_MERGE_GROUPS[i]; }
       return null;
     }
-    var lcGroupNodes = LC_SUBGROUPS.map(buildLcNode).filter(function(n){ return n; });
-    var lcFlat = (DATA.subItems.LC||[]).filter(function(it){ return !lcConsumed[it.id]; })
-      .map(function(it){ return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund); });
-    var lcKids = lcGroupNodes.concat(lcFlat);
-    var rootLC = makeGroup('TOTAL_LC','รวมต้นทุนแรงงาน (LC)','expense', lcKids, 'รายการย่อยใน Labor Cost (ตามตาราง Quick Method จริง)');
-    PANELS[4] = finalizePanel(4,'expense',[rootLC]);
-    PANELS[4].fundFilterable = true;
-    var fundSegHtml = '<div class="field"><label>แหล่งเงิน</label><div class="seg" id="fundSeg4">' +
-      '<button data-v="all" aria-pressed="true">ทั้งหมด</button>' +
-      '<button data-v="self" aria-pressed="false">เงินบำรุง</button>' +
-      '<button data-v="budget" aria-pressed="false">เงินงบประมาณ</button>' +
-      '</div></div>';
-    document.getElementById('panel4').innerHTML = buildPanelDom(4,
-      'ต้นทุนแรงงาน (Labor Cost)', 'ค่าใช้จ่ายบุคลากร แยกเป็นรายการจริงตามตาราง Quick Method ('+(DATA.subItems.LC||[]).length+' รายการ)',
-      fundSegHtml);
-    document.getElementById('fundSeg4').addEventListener('click', function(e){
-      var b=e.target.closest('button'); if(!b) return;
-      STATE.lcFund = b.dataset.v;
-      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
-      buildCatSelect(PANELS[4]);
-      renderPanel(PANELS[4]);
-    });
-
-    // Tab5 — Material Cost. Mostly flat real-leaf items, except "วัสดุวิทยาศาสตร์และการแพทย์ใช้ไป" and
-    // "ค่าจ้างตรวจทางห้องปฏิบัติการ (Lab)" which are merged into one sub-group with those two as its
-    // own line items (requested so the two related costs read together instead of as separate rows).
-    var MC_MERGE_IDS = {'MC::5104030205.104':true, 'MC::5104010112.114':true};
-    var mcKids = [], mcMergeInserted = false;
+    var mcKids = [], mcMergeInserted = {};
     (DATA.subItems.MC||[]).forEach(function(it){
-      if(MC_MERGE_IDS[it.id]){
-        if(!mcMergeInserted){
-          var mergeLeaves = (DATA.subItems.MC||[]).filter(function(x){return MC_MERGE_IDS[x.id];})
+      var mg = mcMergeGroupFor(it.id);
+      if(mg){
+        if(!mcMergeInserted[mg.groupId]){
+          var mergeLeaves = (DATA.subItems.MC||[]).filter(function(x){return mg.ids[x.id];})
             .map(function(x){ return makeLeaf(x.id, x.label, 'expense', 'sub'); });
-          mcKids.push(makeGroup('MC_LABSCI','วัสดุวิทยาศาสตร์การแพทย์ + ค่าตรวจ Lab','expense', mergeLeaves));
-          mcMergeInserted = true;
+          mcKids.push(makeGroup(mg.groupId, mg.label, 'expense', mergeLeaves));
+          mcMergeInserted[mg.groupId] = true;
         }
         return;
       }
       mcKids.push(makeLeaf(it.id, it.label, 'expense', 'sub'));
     });
-    // Group the "ใช้ไป" consumable-cost items (plus the Lab merge group above) under one
+    // Group the "ใช้ไป" consumable-cost items (plus the two merge groups above) under one
     // "ต้นทุนบริการ (เฉพาะรายการที่ใช้ไป)" subgroup, per user request.
     var COST_OF_SERVICE_IDS = {
       'MC::5104030205.101': true, 'MC::5104030205.102': true, 'MC::5104030205.103': true,
-      'MC::5104030205.112': true, 'MC::5104030205.113': true, 'MC::5104030205.117': true,
-      'MC::5104030205.118': true, 'MC_LABSCI': true
+      'MC::5104030205.113': true, 'MC::5104030205.117': true,
+      'MC::5104030205.118': true, 'MC_LABSCI': true, 'MC_FOODCONSUME': true
     };
     // Two more named subgroups, per user request: outsourced-service contracts, and another batch of
     // "ใช้ไป" consumable-cost items distinct from the MC_COS set above.
     var MC_OUTSOURCE_IDS = {
       'MC::5104010112.112': true, 'MC::5104010112.113': true, 'MC::5104010112.115': true,
-      'MC::5104010112.101': true, 'MC::5104010112.103': true, 'MC::5104010112.111': true,
+      'MC::5104010112.101': true, 'MC::5104010112.111': true,
       'MC::5104010112.108': true, 'MC::5104010107.112': true, 'MC::5104010107.110': true,
       'MC::5104010107.113': true, 'MC::5104010107.111': true
     };
@@ -1956,9 +1748,7 @@
     mcKids = MC_ORDER.map(function(id){ return mcGroupById[id] || mcFlatById[id]; }).filter(function(n){ return n; });
     var mcLeafCount = (DATA.subItems.MC||[]).length;
     var rootMC = makeGroup('TOTAL_MC','รวมต้นทุนวัสดุ (MC)','expense', mcKids, 'รายการย่อยใน Material Cost (ตามตาราง Quick Method จริง)');
-    PANELS[5] = finalizePanel(5,'expense',[rootMC]);
-    document.getElementById('panel5').innerHTML = buildPanelDom(5,
-      'ต้นทุนวัสดุ (Material Cost)', 'ค่าวัสดุ ค่าใช้สอย และค่าสาธารณูปโภค แยกเป็นรายการจริงตามตาราง Quick Method ('+mcLeafCount+' รายการ)');
+    // Tab5 (old, MC-only) display removed — rootMC stays defined (Tab5->new Tab5 reuses it).
 
     // Tab6 — OthRev, flat real-leaf items, plus one expense composite line:
     // "ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)" = the genuine OthExp line 5104030299.202 + 2 revenue-coded
@@ -1991,114 +1781,927 @@
       'OthRev::4306010104.101','OthRev::4205010104.101','OthRev::4307010107.101','OthRev::4302040101.101',
       'OthRev::4313010199.123','OthRev::4301020106.319'
     ];
+    // Per user request: every OthRev line item is classified into one of two fund-source groups —
+    // "รายได้เงินบำรุง" (self-funded revenue retained by the hospital) or "รายได้ที่ไม่ใช่เงินบำรุง"
+    // (inter-agency/government-budget transfers, asset-disposal proceeds routed to the state, etc.)
+    // — filterable via the "แหล่งเงิน" toggle below, same fundFilterable mechanism as Tab4 (LC).
+    // A few items not explicitly classified by the user (marked below) were classified by Claude,
+    // by pattern-matching against the user's own classification of closely related items.
+    var OTHREV_SELF_IDS = {
+      'OthRev::4302030101.101': true, // รายได้จากการรับบริจาค-เงินสดและรายการเทียบเท่าเงินสด
+      'OthRev::4313010199.105': true, // รายได้ค่าใบรับรองแพทย์
+      'OthRev::4303010101.101': true, // รายได้ดอกเบี้ยจากสถาบันการเงิน
+      'OthRev::4301020102.103': true, // รายได้ค่าสิ่งส่งตรวจ - หน่วยงานภาครัฐ
+      'OthRev::4301020106.320': true, // ส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงในการจ่ายตามกองทุนประกันสังคม
+      'OthRev::4313010103.101': true, // รายได้ค่าปรับ
+      'OthRev::4302010106.101': true, // รายได้จากการช่วยเหลือเพื่อการดำเนินงานจาก อปท.
+      'OthRev::4301010102.103': true, // รายได้จากการจำหน่ายยาสมุนไพร - หน่วยงานภาครัฐ
+      'OthRev::4313010199.101': true, // รายได้ค่าวัสดุ/อุปกรณ์/น้ำยา - หน่วยงานภาครัฐ
+      'OthRev::4301020106.322': true, // รายได้ค่าตอบแทนและพัฒนากิจการ
+      'OthRev::4313010199.109': true, // รายได้จากโครงการผลิตบุคลากรทางการแพทย์
+      'OthRev::4301010102.101': true, // รายได้จากการจำหน่ายยาสมุนไพร - บุคคลภายนอก
+      'OthRev::4313010199.102': true, // รายได้ค่าวัสดุ/อุปกรณ์/น้ำยา - บุคคลภายนอก
+      'OthRev::4301020102.101': true, // รายได้ค่าสิ่งส่งตรวจ - บุคคลภายนอก
+      'OthRev::4301020106.518': true, // รายได้แรงงานต่างด้าว - ค่าบริการทางการแพทย์ (P&P)
+      'OthRev::4302010101.101': true, // รายได้จากการอุดหนุน - หน่วยงานภาครัฐ
+      'OthRev::4301030104.101': true, // รายได้ค่าเช่าอื่น
+      'OthRev::4301010102.104': true, // รายได้จากการจำหน่ายสินค้าอื่น ๆ - หน่วยงานภาครัฐ
+      'OthRev::4313010101.101': true, // หนี้สูญได้รับคืน
+      'OthRev::4202010199.101': true, // รายได้ค่าธรรมเนียมการบริการอื่น
+      'OthRev::4306010110.102': true, // รายรับจากการขายวัสดุที่ใช้แล้ว
+      'OthRev::4301020106.502': true, // รายได้กองทุนแรงงานต่างด้าว
+      'OthRev::4202020102.101': true, // รายได้ค่าเช่าอสังหาริมทรัพย์จากบุคคลภายนอก
+      'OthRev::4301030102.101': true, // รายได้ค่าเช่าอสังหาริมทรัพย์
+      'OthRev::4301010102.102': true, // รายได้จากการจำหน่ายสินค้าอื่น ๆ - บุคคลภายนอก
+      'OthRev::4301020106.319': true, // ส่วนต่างค่ารักษาที่สูงกว่าข้อตกลงในการจ่ายตามกองทุนประกันสังคม
+      'OthRev::4313010199.117': true, // รายได้อื่น-เงินนอกงบประมาณรับโอนจาก สสจ./รพศ./รพท./รพช./รพ.สต.
+      'OthRev::4313010199.113': true, // รายได้ค่าธรรมเนียม
+      'OthRev::4301020106.321': true, // รายได้ค่าบริหารจัดการประกันสังคม
+      'OthRev::4203010101.101': true, // รายได้ดอกเบี้ยเงินฝากที่สถาบันการเงิน
+      'OthRev::4313010199.110': true, // รายได้ลักษณะอื่น
+      // -- Claude's classification (user asked for an opinion on these 2, not explicitly listed) --
+      'OthRev::4313010199.108': true, // รายได้จากเงินโครงการผลิตแพทย์ — same "โครงการผลิต..." pattern as .109 above (user-confirmed self)
+      'OthRev::4301020108.101': true  // รายได้เงินนอกงบประมาณ — generic off-budget revenue, no external-agency source named (unlike the "...จากกรมบัญชีกลาง" item below), most consistent with the hospital's own เงินบำรุง fund
+    };
     var orById = {}; (DATA.subItems.OthRev||[]).forEach(function(it){ orById[it.id] = it; });
-    var orLeaves = OTHREV_ORDER.filter(function(id){ return orById[id]; }).map(function(id){
-      var it = orById[id];
-      return makeLeaf(it.id, it.label, 'revenue', 'sub');
-    });
-    var rootOR = makeGroup('TOTAL_OTHREV','รวมรายได้อื่น (OthRev)','revenue', orLeaves, 'รายการย่อยในรายได้อื่น (ตามตาราง Quick Method จริง)');
+    // (orLeaves/rootOR/old Tab6 display removed — OTHREV_SELF_IDS/orById stay defined: orById is
+    // reused by Tab4's regOthRevLeaves below, OTHREV_SELF_IDS is reused by the new Planfin Tab2's
+    // fund tagging further down.)
 
     // '4301020105.239' moved OUT of this composite per explicit user request — it now merges into
     // OPD's "รายได้ค่ารักษา UC - OP นอก CUP ในจังหวัด (รวม)" instead (see REV_MERGES above).
-    var PAYUC_IDS = ['OthExp::5104030299.202','OthExp::4301020105.271','OthExp::4301020105.240'];
+    // '5104030299.203' (ค่ารักษาตามจ่าย UC นอกสังกัด สป. สธ.) added IN per later explicit user request.
+    var PAYUC_IDS = ['OthExp::5104030299.202','OthExp::4301020105.271','OthExp::4301020105.240','OthExp::5104030299.203'];
     var oeById = {}; (DATA.subItems.OthExp||[]).forEach(function(it){ oeById[it.id] = it; });
     var payUcLeaves = PAYUC_IDS.filter(function(id){ return oeById[id]; }).map(function(id){
       var it = oeById[id];
       return makeLeaf(it.id, it.label, 'expense', 'sub');
     });
     var rootPayUC = makeGroup('TOTAL_PAYUC','ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)','expense', payUcLeaves,
-      'ยอดสุทธิ: ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. รวมกับส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงตามจ่าย UC OP (2 รายการ)');
+      'ยอดสุทธิ: ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. + นอกสังกัด สป. สธ. รวมกับส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงตามจ่าย UC OP (3 รายการ)');
+    // rootPayUC is no longer separately displayed (old Tab7 removed) — the node object itself is
+    // still built here and reused as-is by Tab5's (-> new Tab5) rootRecurring composite below,
+    // and its 4 leaf ids are also visible, grouped by Plan_ID like everything else, in the new
+    // Tab3 (Expense by Plan) below, since it draws straight from DATA.subItems.OthExp.
 
-    // "ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)" listed first, per user request.
-    PANELS[6] = finalizePanel(6,'mixed',[rootPayUC, rootOR]);
-    document.getElementById('panel6').innerHTML = buildPanelDom(6,
-      'รายได้อื่น (OthRev)', 'รายได้ที่ไม่ใช่ค่ารักษาพยาบาลโดยตรง แยกเป็นรายการจริงตามตาราง Quick Method ('+orLeaves.length+' รายการ) — รวมยอด "ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)" ที่แสดงเป็นค่าใช้จ่าย');
+    // ============================================================
+    // NEW Tab2/Tab3 — "แผนงบ Planfin" reclassification (ทดลอง, per user request 2026-09-28):
+    // every real Quick Method line item across all 7 old categories (OPD/IPD/LC/MC/CC/OthRev/
+    // OthExp) is regrouped by its Plan_ID from the "หมวด.xlsx" planfin mapping table, REPLACING
+    // the old OPD/IPD/LC/MC/OthRev/OthExp tabs (and the OthExp hidden-items tab) with 2 tabs:
+    // one for all revenue Plan_ID groups, one for all expense Plan_ID groups. Same leaf ids/
+    // 'sub' data source as before (just re-parented under a different group), so every total
+    // here is byte-identical to the sum of the old per-category tabs — only the grouping axis
+    // changed. Tab1's 7-category overview and tabs 4-8 below are untouched by this change; they
+    // read their own independent id lists straight from DATA.subItems, not from these trees.
+    var PLANFIN_ID_TO_PLAN = {
+          "CC::5105010101.101":"P24",
+          "CC::5105010103.101":"P24",
+          "CC::5105010105.101":"P24",
+          "CC::5105010107.101":"P24",
+          "CC::5105010107.102":"P24",
+          "CC::5105010107.103":"P24",
+          "CC::5105010107.104":"P24",
+          "CC::5105010107.106":"P24",
+          "CC::5105010109.101":"P24",
+          "CC::5105010111.101":"P24",
+          "CC::5105010113.101":"P24",
+          "CC::5105010115.101":"P24",
+          "CC::5105010117.101":"P24",
+          "CC::5105010119.101":"P24",
+          "CC::5105010121.101":"P24",
+          "CC::5105010125.101":"P24",
+          "CC::5105010127.101":"P24",
+          "CC::5105010129.101":"P24",
+          "CC::5105010131.101":"P24",
+          "CC::5105010133.101":"P24",
+          "CC::5105010135.101":"P24",
+          "CC::5105010137.101":"P24",
+          "CC::5105010139.101":"P24",
+          "CC::5105010148.101":"P24",
+          "CC::5105010149.102":"P24",
+          "CC::5105010158.101":"P24",
+          "CC::5105010160.101":"P24",
+          "CC::5105010160.102":"P24",
+          "CC::5105010160.103":"P24",
+          "CC::5105010160.104":"P24",
+          "CC::5105010160.105":"P24",
+          "CC::5105010160.106":"P24",
+          "CC::5105010160.107":"P24",
+          "CC::5105010160.108":"P24",
+          "CC::5105010160.109":"P24",
+          "CC::5105010161.101":"P24",
+          "CC::5105010161.102":"P24",
+          "CC::5105010161.103":"P24",
+          "CC::5105010161.104":"P24",
+          "CC::5105010161.105":"P24",
+          "CC::5105010161.106":"P24",
+          "CC::5105010161.107":"P24",
+          "CC::5105010161.108":"P24",
+          "CC::5105010161.109":"P24",
+          "CC::5105010161.110":"P24",
+          "CC::5105010164.101":"P24",
+          "CC::5105010164.103":"P24",
+          "IPD::4301020104.105":"P06",
+          "IPD::4301020104.107":"P10",
+          "IPD::4301020104.109":"P06",
+          "IPD::4301020104.110":"P06",
+          "IPD::4301020104.111":"P06",
+          "IPD::4301020104.402":"P07",
+          "IPD::4301020104.405":"P07",
+          "IPD::4301020104.406":"P07",
+          "IPD::4301020104.603":"P10",
+          "IPD::4301020104.802":"P61",
+          "IPD::4301020104.803":"P61",
+          "IPD::4301020104.804":"P61",
+          "IPD::4301020104.806":"P61",
+          "IPD::4301020104.807":"P61",
+          "IPD::4301020104.808":"P61",
+          "IPD::4301020105.202":"P04",
+          "IPD::4301020105.231":"P04",
+          "IPD::4301020105.232":"P04",
+          "IPD::4301020105.245":"P04",
+          "IPD::4301020105.251":"P04",
+          "IPD::4301020105.252":"P04",
+          "IPD::4301020105.265":"P04",
+          "IPD::4301020106.306":"P08",
+          "IPD::4301020106.308":"P08",
+          "IPD::4301020106.310":"P08",
+          "IPD::4301020106.312":"P08",
+          "IPD::4301020106.314":"P08",
+          "IPD::4301020106.317":"P08",
+          "IPD::4301020106.504":"P09",
+          "IPD::4301020106.507":"P09",
+          "IPD::4301020106.510":"P09",
+          "IPD::4301020106.511":"P09",
+          "IPD::4301020106.513":"P09",
+          "IPD::4301020106.514":"P09",
+          "IPD::4301020106.705":"P10",
+          "IPD::4301020106.706":"P10",
+          "IPD::4301020106.710":"P10",
+          "LC::5101010101.101":"P17",
+          "LC::5101010101.102":"P17",
+          "LC::5101010103.101":"P17",
+          "LC::5101010103.102":"P17",
+          "LC::5101010103.103":"P17",
+          "LC::5101010108.101":"P19",
+          "LC::5101010109.101":"P20",
+          "LC::5101010109.102":"P20",
+          "LC::5101010109.103":"P20",
+          "LC::5101010109.104":"P20",
+          "LC::5101010113.101":"P17",
+          "LC::5101010113.102":"P17",
+          "LC::5101010113.103":"P18",
+          "LC::5101010113.104":"P18",
+          "LC::5101010113.105":"P18",
+          "LC::5101010113.106":"P18",
+          "LC::5101010113.107":"P18",
+          "LC::5101010113.108":"P18",
+          "LC::5101010115.101":"P17",
+          "LC::5101010115.102":"P17",
+          "LC::5101010116.101":"P17",
+          "LC::5101010116.102":"P17",
+          "LC::5101010116.104":"P17",
+          "LC::5101010116.105":"P17",
+          "LC::5101010116.106":"P17",
+          "LC::5101010199.101":"P17",
+          "LC::5101010199.102":"P17",
+          "LC::5101010199.103":"P19",
+          "LC::5101020101.101":"P20",
+          "LC::5101020101.102":"P20",
+          "LC::5101020102.101":"P20",
+          "LC::5101020103.101":"P20",
+          "LC::5101020104.101":"P20",
+          "LC::5101020105.101":"P20",
+          "LC::5101020106.101":"P20",
+          "LC::5101020106.102":"P20",
+          "LC::5101020108.101":"P20",
+          "LC::5101020112.101":"P20",
+          "LC::5101020114.107":"P19",
+          "LC::5101020114.114":"P19",
+          "LC::5101020114.126":"P17",
+          "LC::5101020114.127":"P17",
+          "LC::5101020115.101":"P19",
+          "LC::5101020116.101":"P20",
+          "LC::5101020116.102":"P20",
+          "LC::5101020199.105":"P20",
+          "LC::5101020199.106":"P20",
+          "LC::5101030101.101":"P20",
+          "LC::5101030205.101":"P20",
+          "LC::5101030206.101":"P20",
+          "LC::5101030207.101":"P20",
+          "LC::5101030208.101":"P20",
+          "LC::5101030211.101":"P20",
+          "LC::5102010106.101":"P20",
+          "LC::5102010199.101":"P20",
+          "LC::5102010199.102":"P20",
+          "LC::5102030199.101":"P20",
+          "LC::5102030199.102":"P20",
+          "LC::5103010102.101":"P21",
+          "LC::5103010102.102":"P21",
+          "LC::5103010103.101":"P21",
+          "LC::5103010103.102":"P21",
+          "LC::5103010199.101":"P21",
+          "LC::5103010199.102":"P21",
+          "LC::5104040102.101":"P19",
+          "LC::5104040102.102":"P19",
+          "LC::5104040102.103":"P19",
+          "LC::5104040102.104":"P19",
+          "LC::5104040102.105":"P19",
+          "LC::5104040102.106":"P19",
+          "LC::5104040102.107":"P19",
+          "LC::5104040102.108":"P19",
+          "LC::5104040102.109":"P19",
+          "LC::5104040102.110":"P19",
+          "LC::5104040102.111":"P19",
+          "LC::5104040102.112":"P19",
+          "LC::5104040102.113":"P19",
+          "LC::5104040102.114":"P19",
+          "LC::5104040102.115":"P19",
+          "LC::5104040102.116":"P19",
+          "LC::5104040102.117":"P19",
+          "LC::5104040102.118":"P19",
+          "LC::5104040102.119":"P19",
+          "LC::5104040102.120":"P19",
+          "MC::5104010104.101":"P23",
+          "MC::5104010104.102":"P23",
+          "MC::5104010104.103":"P23",
+          "MC::5104010104.104":"P23",
+          "MC::5104010104.105":"P23",
+          "MC::5104010104.106":"P23",
+          "MC::5104010104.107":"P23",
+          "MC::5104010104.108":"P23",
+          "MC::5104010104.109":"P23",
+          "MC::5104010107.101":"P21",
+          "MC::5104010107.102":"P21",
+          "MC::5104010107.103":"P21",
+          "MC::5104010107.104":"P21",
+          "MC::5104010107.105":"P21",
+          "MC::5104010107.106":"P21",
+          "MC::5104010107.107":"P21",
+          "MC::5104010107.108":"P21",
+          "MC::5104010107.109":"P21",
+          "MC::5104010107.110":"P21",
+          "MC::5104010107.111":"P21",
+          "MC::5104010107.112":"P21",
+          "MC::5104010107.113":"P21",
+          "MC::5104010110.101":"P23",
+          "MC::5104010112.101":"P21",
+          "MC::5104010112.103":"P21",
+          "MC::5104010112.106":"P21",
+          "MC::5104010112.108":"P21",
+          "MC::5104010112.110":"P21",
+          "MC::5104010112.111":"P21",
+          "MC::5104010112.112":"P21",
+          "MC::5104010112.113":"P21",
+          "MC::5104010112.114":"P21",
+          "MC::5104010112.115":"P21",
+          "MC::5104010114.101":"P21",
+          "MC::5104010115.101":"P21",
+          "MC::5104020101.101":"P22",
+          "MC::5104020103.101":"P22",
+          "MC::5104020105.101":"P22",
+          "MC::5104020106.101":"P22",
+          "MC::5104020107.101":"P22",
+          "MC::5104030202.101":"P21",
+          "MC::5104030203.101":"P21",
+          "MC::5104030205.101":"P14",
+          "MC::5104030205.102":"P15",
+          "MC::5104030205.103":"P15",
+          "MC::5104030205.104":"P16",
+          "MC::5104030205.112":"P23",
+          "MC::5104030205.113":"P23",
+          "MC::5104030205.117":"P151",
+          "MC::5104030205.118":"P15",
+          "MC::5104030206.101":"P23",
+          "MC::5104030207.101":"P21",
+          "MC::5104030208.101":"P21",
+          "MC::5104030210.101":"P21",
+          "MC::5104030212.101":"P21",
+          "MC::5104030217.101":"P21",
+          "MC::5104030219.101":"P21",
+          "MC::5104030220.101":"P21",
+          "MC::5104030299.102":"P25",
+          "MC::5104030299.103":"P25",
+          "MC::5104030299.104":"P21",
+          "MC::5104030299.105":"P25",
+          "MC::5104030299.204":"P24",
+          "MC::5212010199.105":"P25",
+          "OPD::4301020102.102":"P10",
+          "OPD::4301020102.104":"P07",
+          "OPD::4301020102.105":"P05",
+          "OPD::4301020104.104":"P06",
+          "OPD::4301020104.106":"P10",
+          "OPD::4301020104.108":"P06",
+          "OPD::4301020104.401":"P07",
+          "OPD::4301020104.602":"P10",
+          "OPD::4301020104.801":"P61",
+          "OPD::4301020104.805":"P61",
+          "OPD::4301020105.201":"P04",
+          "OPD::4301020105.203":"P04",
+          "OPD::4301020105.205":"P04",
+          "OPD::4301020105.207":"P04",
+          "OPD::4301020105.211":"P13",
+          "OPD::4301020105.214":"P04",
+          "OPD::4301020105.217":"P04",
+          "OPD::4301020105.222":"P04",
+          "OPD::4301020105.223":"P04",
+          "OPD::4301020105.228":"P04",
+          "OPD::4301020105.229":"P04",
+          "OPD::4301020105.239":"P04",
+          "OPD::4301020105.241":"P04",
+          "OPD::4301020105.242":"P04",
+          "OPD::4301020105.243":"P04",
+          "OPD::4301020105.244":"P04",
+          "OPD::4301020105.255":"P04",
+          "OPD::4301020105.257":"P04",
+          "OPD::4301020105.258":"P04",
+          "OPD::4301020105.260":"P04",
+          "OPD::4301020105.263":"P04",
+          "OPD::4301020105.264":"P04",
+          "OPD::4301020105.266":"P04",
+          "OPD::4301020106.303":"P08",
+          "OPD::4301020106.305":"P08",
+          "OPD::4301020106.307":"P08",
+          "OPD::4301020106.309":"P08",
+          "OPD::4301020106.311":"P08",
+          "OPD::4301020106.313":"P08",
+          "OPD::4301020106.315":"P08",
+          "OPD::4301020106.503":"P09",
+          "OPD::4301020106.505":"P09",
+          "OPD::4301020106.509":"P09",
+          "OPD::4301020106.512":"P09",
+          "OPD::4301020106.515":"P09",
+          "OPD::4301020106.516":"P09",
+          "OPD::4301020106.517":"P09",
+          "OPD::4301020106.519":"P09",
+          "OPD::4301020106.701":"P10",
+          "OPD::4301020106.703":"P10",
+          "OPD::4301020106.704":"P10",
+          "OPD::4301020106.709":"P10",
+          "OPD::4301020106.711":"P10",
+          "OPD::4301020106.712":"P10",
+          "OPD::4313010199.202":"P12",
+          "OthExp::4301020105.240":"P04",
+          "OthExp::4301020105.271":"P04",
+          "OthExp::5101040111.101":"P20",
+          "OthExp::5101040202.101":"P20",
+          "OthExp::5101040204.101":"P20",
+          "OthExp::5101040205.101":"P20",
+          "OthExp::5101040206.101":"P20",
+          "OthExp::5101040207.101":"P20",
+          "OthExp::5104030218.101":"P25",
+          "OthExp::5104030299.202":"P25",
+          "OthExp::5104030299.203":"P25",
+          "OthExp::5104030299.501":"P25",
+          "OthExp::5104030299.701":"P25",
+          "OthExp::5104030299.702":"P25",
+          "OthExp::5105010119.101":"P24",
+          "OthExp::5107010101.101":"P25",
+          "OthExp::5107010199.101":"P25",
+          "OthExp::5107030101.101":"P251",
+          "OthExp::5108010101.102":"P241",
+          "OthExp::5108010101.114":"P241",
+          "OthExp::5108010101.115":"P241",
+          "OthExp::5108010101.203":"P241",
+          "OthExp::5108010107.102":"P241",
+          "OthExp::5108010107.104":"P241",
+          "OthExp::5108010107.105":"P241",
+          "OthExp::5108010107.114":"P241",
+          "OthExp::5108010107.115":"P241",
+          "OthExp::5108010107.203":"P241",
+          "OthExp::5108010107.205":"P241",
+          "OthExp::5112010103.101":"P25",
+          "OthExp::5203010105.101":"P25",
+          "OthExp::5203010106.101":"P25",
+          "OthExp::5203010107.101":"P25",
+          "OthExp::5203010109.101":"P25",
+          "OthExp::5203010110.101":"P25",
+          "OthExp::5203010111.101":"P25",
+          "OthExp::5203010112.101":"P25",
+          "OthExp::5203010113.101":"P25",
+          "OthExp::5203010114.101":"P25",
+          "OthExp::5203010115.101":"P25",
+          "OthExp::5203010117.101":"P25",
+          "OthExp::5203010119.101":"P25",
+          "OthExp::5203010120.101":"P25",
+          "OthExp::5203010122.101":"P25",
+          "OthExp::5203010126.101":"P25",
+          "OthExp::5203010141.101":"P25",
+          "OthExp::5203010142.101":"P25",
+          "OthExp::5203010146.101":"P25",
+          "OthExp::5205010101.101":"P25",
+          "OthExp::5209010112.101":"P251",
+          "OthExp::5210010101.101":"P251",
+          "OthExp::5210010102.101":"P251",
+          "OthExp::5210010103.101":"P251",
+          "OthExp::5210010105.101":"P251",
+          "OthExp::5210010112.101":"P251",
+          "OthExp::5210010118.101":"P251",
+          "OthExp::5210010121.101":"P25",
+          "OthExp::5211010102.101":"P25",
+          "OthExp::5212010199.101":"P25",
+          "OthExp::5212010199.102":"P25",
+          "OthExp::5212010199.104":"P25",
+          "OthExp::5212010199.106":"P25",
+          "OthExp::5212010199.107":"P25",
+          "OthExp::5212010199.108":"P25",
+          "OthExp::5212010199.109":"P25",
+          "OthExp::5212010199.110":"P25",
+          "OthExp::5212010199.111":"P25",
+          "OthExp::5212010199.112":"P25",
+          "OthExp::5212010199.113":"P25",
+          "OthExp::5212010199.114":"P25",
+          "OthExp::5401010101.101":"P25",
+          "OthRev::4201020106.101":"P12",
+          "OthRev::4201020199.101":"P12",
+          "OthRev::4202010199.101":"P12",
+          "OthRev::4202020102.101":"P12",
+          "OthRev::4202030105.101":"P12",
+          "OthRev::4203010101.101":"P12",
+          "OthRev::4205010104.101":"P12",
+          "OthRev::4205010110.101":"P12",
+          "OthRev::4206010102.101":"P12",
+          "OthRev::4206010199.101":"P12",
+          "OthRev::4301010102.101":"P10",
+          "OthRev::4301010102.102":"P10",
+          "OthRev::4301010102.103":"P10",
+          "OthRev::4301010102.104":"P10",
+          "OthRev::4301020102.101":"P10",
+          "OthRev::4301020102.103":"P10",
+          "OthRev::4301020102.106":"P10",
+          "OthRev::4301020106.319":"P08",
+          "OthRev::4301020106.320":"P08",
+          "OthRev::4301020106.321":"P08",
+          "OthRev::4301020106.322":"P08",
+          "OthRev::4301020106.502":"P09",
+          "OthRev::4301020106.518":"P09",
+          "OthRev::4301020108.101":"P12",
+          "OthRev::4301030102.101":"P12",
+          "OthRev::4301030104.101":"P12",
+          "OthRev::4302010101.101":"P12",
+          "OthRev::4302010106.101":"P12",
+          "OthRev::4302010199.101":"P12",
+          "OthRev::4302020107.101":"P13",
+          "OthRev::4302020199.101":"P13",
+          "OthRev::4302030101.101":"P12",
+          "OthRev::4302030101.102":"P12",
+          "OthRev::4302040101.101":"P121",
+          "OthRev::4303010101.101":"P12",
+          "OthRev::4306010104.101":"P12",
+          "OthRev::4306010110.101":"P12",
+          "OthRev::4306010110.102":"P12",
+          "OthRev::4307010103.201":"P11",
+          "OthRev::4307010104.101":"P13",
+          "OthRev::4307010105.101":"P12",
+          "OthRev::4307010106.101":"P12",
+          "OthRev::4307010107.101":"P12",
+          "OthRev::4307010108.101":"P12",
+          "OthRev::4307010110.101":"P12",
+          "OthRev::4308010101.101":"P121",
+          "OthRev::4308010105.101":"P121",
+          "OthRev::4308010118.101":"P121",
+          "OthRev::4308010121.101":"P12",
+          "OthRev::4313010101.101":"P12",
+          "OthRev::4313010103.101":"P12",
+          "OthRev::4313010199.101":"P10",
+          "OthRev::4313010199.102":"P10",
+          "OthRev::4313010199.105":"P12",
+          "OthRev::4313010199.108":"P12",
+          "OthRev::4313010199.109":"P12",
+          "OthRev::4313010199.110":"P12",
+          "OthRev::4313010199.113":"P12",
+          "OthRev::4313010199.114":"P12",
+          "OthRev::4313010199.115":"P12",
+          "OthRev::4313010199.116":"P12",
+          "OthRev::4313010199.117":"P12",
+          "OthRev::4313010199.118":"P13",
+          "OthRev::4313010199.119":"P12",
+          "OthRev::4313010199.120":"P12",
+          "OthRev::4313010199.121":"P12",
+          "OthRev::4313010199.122":"P12",
+          "OthRev::4313010199.123":"P12"
+        };
+    
+    var PLANFIN_META = {
+          "P04":"รายได้ UC",
+          "P05":"รายได้จาก EMS",
+          "P06":"รายได้ค่ารักษาเบิกต้นสังกัด",
+          "P07":"รายได้ค่ารักษาเบิกจ่ายตรงกรมบัญชีกลาง",
+          "P08":"รายได้ประกันสังคม",
+          "P09":"รายได้แรงงานต่างด้าว",
+          "P10":"รายได้ค่ารักษาและบริการอื่น ๆ",
+          "P11":"รายได้งบประมาณส่วนบุคลากร",
+          "P12":"รายได้อื่น",
+          "P121":"รายได้อื่น (ระบบบัญชีบันทึกอัตโนมัติ)",
+          "P13":"รายได้งบลงทุน",
+          "P61":"รายได้ค่ารักษา อปท.",
+          "P14":"ต้นทุนยา",
+          "P15":"ต้นทุนเวชภัณฑ์มิใช่ยาและวัสดุการแพทย์",
+          "P151":"ต้นทุนวัสดุทันตกรรม",
+          "P16":"ต้นทุนวัสดุวิทยาศาสตร์การแพทย์",
+          "P17":"เงินเดือนและค่าจ้างประจำ",
+          "P18":"ค่าจ้างชั่วคราว",
+          "P19":"ค่าตอบแทน",
+          "P20":"ค่าใช้จ่ายบุคลากรอื่น",
+          "P21":"ค่าใช้สอย",
+          "P22":"ค่าสาธารณูปโภค",
+          "P23":"วัสดุใช้ไป",
+          "P24":"ค่าเสื่อมราคาและค่าตัดจำหน่าย",
+          "P241":"หนี้สูญและสงสัยจะสูญ",
+          "P25":"ค่าใช้จ่ายอื่น",
+          "P251":"ค่าใช้จ่ายอื่น (ระบบบัญชีบันทึกอัตโนมัติ)"
+        };
+    
+    var PLANFIN_REV_ORDER = ["P04", "P05", "P06", "P61", "P07", "P08", "P09", "P10", "P11", "P12", "P121", "P13"];
+    var PLANFIN_EXP_ORDER = ["P14", "P15", "P151", "P16", "P17", "P18", "P19", "P20", "P21", "P22", "P23", "P24", "P241", "P25", "P251"];
 
-    // Tab7 — "รายได้ที่รับสม่ำเสมอ (ไม่รวมเหมาจ่าย)", per user request: OPD revenue + IPD revenue,
-    // excluding 9 named UC capitation/earmarked-fund categories + the entire "ไร้รัฐ/ไร้สัญชาติ"
-    // payer group from OPD (all under payer OP-UC except the payer-group exclusion), plus 2 OthRev
-    // items added back in (ค่าใบรับรองแพทย์ + เงินบริจาค-เงินสด). Reuses opdPayerNodes/ipdPayerNodes/
-    // orById (built above for Tab2/Tab3/Tab6) read-only: filtering with .filter() produces new
-    // arrays/groups without mutating the objects those tabs' own trees still use, so their totals
-    // are provably unaffected.
-    var EXCLUDE_REG_PAYER = { 'OP-ไร้รัฐ': true }; // ไร้รัฐ/ไร้สัญชาติ — whole OPD payer group excluded
-    var EXCLUDE_REG_IDS = {
-      'OPD::4301020105.201::GRP': true, // รายได้ค่ารักษา UC -OP ใน CUP (รวม)
-      'OPD::4301020105.241::GRP': true, // รายได้ค่ารักษาด้านการสร้างเสริมสุขภาพและป้องกันโรค (P&P) (รวม)
-      'OPD::4301020106.709::GRP': true, // รายได้ค่ารักษา-บุคคลที่มีปัญหาสถานะและสิทธิ OP ใน CUP (รวม)
-      'OPD::4301020105.243': true,      // รายได้กองทุน UC (CF)
-      'OPD::4301020105.203::GRP': true, // รายได้ค่ารักษา UC - OP นอก CUP ในจังหวัด (รวม) — now a REV_MERGES group
-      'OPD::4301020105.242': true,      // รายได้กองทุน UC-บริการพื้นที่เฉพาะ
-      'OPD::4301020105.207': true,      // รายได้ค่ารักษา UC-OP นอกสังกัด สป.
-      'OPD::4301020105.205': true,      // รายได้ค่ารักษา UC-OP นอก CUP ต่างจังหวัด
-      'OPD::4301020105.211': true       // รายได้กองทุน UC (งบลงทุน)
+    var PLANFIN_ALL_CATS = ['OPD','IPD','LC','MC','CC','OthExp','OthRev'];
+    // Per user request 2026-09-28: every item under P21 (ค่าใช้สอย), P22 (ค่าสาธารณูปโภค) and P23
+    // (วัสดุใช้ไป) counts as เงินบำรุง — this overrides even the 6 P21 items that are natively LC
+    // (travel/per-diem) with their own "(เงินงบประมาณ)"/"(เงินนอกงบประมาณ)" split tag, deliberately,
+    // since the user named "ทุกหมวดย่อย" (every subcategory) of these 3 Plan_IDs explicitly.
+    var SELF_FUND_PLAN_IDS = { P21:true, P22:true, P23:true };
+    // Per user request 2026-09-28: every item under P20 (ค่าใช้จ่ายบุคลากรอื่น — 6 "เงินช่วย..."
+    // items for เบี้ยหวัด/บำนาญ) counts as เงินงบประมาณ.
+    var BUDGET_FUND_PLAN_IDS = { P20:true };
+    // Plus these named MC/OthExp items (by exact id) called out individually — the first 5 span
+    // P14/P15/P151/P16 (2026-09-28 request); the next 8 are all in P25 "ค่าใช้จ่ายอื่น" and the last 1
+    // is in P15 (both later the same day, in response to the fund-classification audit).
+    var SELF_FUND_ITEM_IDS = {
+      'MC::5104030205.101': true, // ยาใช้ไป (P14)
+      'MC::5104030205.102': true, // วัสดุเภสัชกรรมใช้ไป (P15)
+      'MC::5104030205.103': true, // วัสดุทางการแพทย์ทั่วไปใช้ไป (P15)
+      'MC::5104030205.104': true, // วัสดุวิทยาศาสตร์และการแพทย์ใช้ไป (P16)
+      'MC::5104030205.117': true, // วัสดุทันตกรรมใช้ไป (P151)
+      'MC::5212010199.105': true, // ค่าใช้จ่ายลักษณะอื่น (P25)
+      'MC::5104030299.105': true, // ค่าใช้จ่ายตามโครงการ (เงินนอกงบประมาณ) (P25)
+      'MC::5104030299.102': true, // ค่าใช้จ่ายตามโครงการ (UC) (PP) (P25)
+      'OthExp::5104030299.202': true, // ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. (P25)
+      'OthExp::5104030299.702': true, // ค่ารักษาตามจ่ายบุคคลที่มีปัญหาสถานะและสิทธิ (P25)
+      'OthExp::5104030299.501': true, // ค่ารักษาตามจ่ายคนต่างด้าวและแรงงานต่างด้าว (P25)
+      'OthExp::5104030299.203': true, // ค่ารักษาตามจ่าย UC นอกสังกัด สป. สธ. (P25)
+      'OthExp::5212010199.114': true, // ค่าใช้จ่ายอื่น-เงินนอกงบประมาณโอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      'MC::5104030205.118': true, // วัสดุเอกซเรย์ใช้ไป (P15)
+      // 2026-09-28, round 3 (P20/P25/P251 remainder classification):
+      'OthExp::5212010199.101': true, // ค่าใช้จ่ายโครงการผลิตแพทย์ (P25)
+      'OthExp::5107010199.101': true, // ค่าใช้จ่ายอุดหนุนเพื่อการดำเนินงานอื่น (P25)
+      'OthExp::5112010103.101': true, // ค่าสวัสดิการสังคม-อื่น (P25)
+      'OthExp::5212010199.102': true, // ค่าใช้จ่ายโครงการผลิตบุคลากรทางการแพทย์ (P25)
+      'OthExp::5212010199.107': true, // ค่าใช้จ่ายอื่น-วัสดุโอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      'OthExp::5104030299.701': true  // ค่าใช้จ่ายตามโครงการ (P&P) บุคคลที่มีปัญหาสถานะและสิทธิ (P25)
     };
-    var opdPayerNodesReg = opdPayerNodes
-      .filter(function(payerNode){ return !EXCLUDE_REG_PAYER[payerNode.id]; })
-      .map(function(payerNode){
-        var filteredKids = payerNode.kids.filter(function(k){ return !EXCLUDE_REG_IDS[k.id]; });
-        return makeGroup(payerNode.id, payerNode.label, 'revenue', filteredKids);
+    var BUDGET_FUND_ITEM_IDS = {
+      'MC::5104030299.103': true, // ค่าใช้จ่ายตามโครงการ (เงินงบประมาณ) (P25)
+      // 2026-09-28, round 3 (P20/P25/P251 remainder classification):
+      'OthExp::5104030218.101': true, // ค่าใช้จ่ายผลักส่งเป็นรายได้แผ่นดิน (P25)
+      'OthExp::5212010199.111': true, // ค่าใช้จ่ายอื่น-เงินงบประมาณงบอุดหนุนโอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      'OthExp::5210010121.101': true, // ค่าใช้จ่ายระหว่างกัน-ภายในกรมเดียวกัน (Manual) (P251)
+      'OthExp::5212010199.110': true, // ค่าใช้จ่ายอื่น-เงินงบประมาณงบดำเนินงานโอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      'OthExp::5212010199.108': true, // ค่าใช้จ่ายอื่น-ครุภัณฑ์ ที่ดิน และสิ่งก่อสร้าง โอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      'OthExp::5211010102.101': true, // โอนสินทรัพย์ให้หน่วยงานของรัฐ (P251)
+      'OthExp::5210010105.101': true, // ค่าใช้จ่ายระหว่างหน่วยงาน - ปรับเงินฝากคลัง (P251)
+      'OthExp::5210010102.101': true, // ค่าใช้จ่ายระหว่างหน่วยงาน - หน่วยงานโอนเงินนอกงบประมาณให้กรมบัญชีกลาง (P251)
+      'OthExp::5210010103.101': true, // ค่าใช้จ่ายระหว่างหน่วยงาน - หน่วยงานโอนเงินรายได้แผ่นดินให้กรมบัญชีกลาง (P251)
+      'OthExp::5210010118.101': true, // ค่าใช้จ่ายระหว่างกัน-ภายในกรมเดียวกัน (P251)
+      'OthExp::5209010112.101': true, // ค่าใช้จ่ายระหว่างหน่วยงาน-หน่วยงานส่งเงินเบิกเกินส่งคืนให้กรมบัญชีกลาง (P251)
+      'OthExp::5107030101.101': true, // บัญชีพักเบิกเงินอุดหนุน (P25)
+      'OthExp::5210010112.101': true, // ค่าใช้จ่ายระหว่างหน่วยงาน - รายได้แผ่นดินรอนำส่งคลัง (P251)
+      'OthExp::5212010199.109': true, // ค่าใช้จ่ายอื่น-เงินงบประมาณงบลงทุนโอนไปสสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      // 2026-09-28, round 4 (the 4 items left over from round 3): user classified all 4 as budget.
+      'OthExp::5212010199.106': true, // ค่าใช้จ่ายอื่น-สินค้าโอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+      'OthExp::5401010101.101': true, // ค่าใช้จ่ายรายการพิเศษนอกเหนือการดำเนินงานปกติ (P25)
+      'OthExp::5212010199.104': true, // ค่าใช้จ่ายที่ดิน (P25)
+      'OthExp::5212010199.113': true  // ค่าใช้จ่ายอื่น-เงินงบประมาณงบกลางโอนไป สสจ./รพศ./รพท./รพช./รพ.สต. (P25)
+    };
+    // Per user request 2026-09-28: ALL "ค่าจำหน่าย..." (asset-disposal/write-off) items, across the
+    // whole dataset, join the P24/P241 "รวมค่าเสื่อม/หนี้สูญ" checkbox exclusion — they should never be
+    // counted as an expense when that checkbox is unchecked, same as P24/P241 itself.
+    var DEPR_BADDEBT_ITEM_IDS = {
+      'OthExp::5203010119.101': true, // ค่าจำหน่าย-ครุภัณฑ์วิทยาศาสตร์และการแพทย์
+      'OthExp::5203010141.101': true,
+      'OthExp::5203010109.101': true,
+      'OthExp::5203010114.101': true,
+      'OthExp::5203010110.101': true,
+      'OthExp::5203010111.101': true,
+      'OthExp::5203010112.101': true,
+      'OthExp::5203010126.101': true,
+      'OthExp::5203010106.101': true,
+      'OthExp::5203010122.101': true,
+      'OthExp::5203010120.101': true,
+      'OthExp::5203010142.101': true,
+      'OthExp::5203010113.101': true,
+      'OthExp::5203010146.101': true,
+      'OthExp::5203010115.101': true,
+      'OthExp::5203010117.101': true,
+      'OthExp::5203010105.101': true
+    };
+    function planfinFundFor(cat, it, pid){
+      if(SELF_FUND_PLAN_IDS[pid]) return 'self';
+      if(BUDGET_FUND_PLAN_IDS[pid]) return 'budget';
+      if(SELF_FUND_ITEM_IDS[it.id]) return 'self';
+      if(BUDGET_FUND_ITEM_IDS[it.id]) return 'budget';
+      if(cat==='LC') return it.fund; // native self/budget tag already on each LC item
+      if(cat==='OthRev') return OTHREV_SELF_IDS[it.id] ? 'self' : 'budget'; // per user's fund classification (Tab6, previous request)
+      return undefined; // remaining OPD/IPD/MC/CC/OthExp items always pass any fund filter (never explicitly classified self/budget)
+    }
+    var DEPR_BADDEBT_PLAN_IDS = { P24:true, P241:true }; // ค่าเสื่อมราคาฯ / หนี้สูญฯ — the "รวมค่าเสื่อม/หนี้สูญ" checkbox
+    var planfinBuckets = {};
+    PLANFIN_ALL_CATS.forEach(function(cat){
+      (DATA.subItems[cat]||[]).forEach(function(it){
+        var pid = PLANFIN_ID_TO_PLAN[it.id];
+        if(!pid) return; // shouldn't happen — every id in this region's data is covered by the mapping table
+        var kind = PLANFIN_REV_ORDER.indexOf(pid)!==-1 ? 'revenue' : 'expense';
+        var leaf = makeLeaf(it.id, it.label, kind, 'sub', planfinFundFor(cat, it, pid));
+        if(DEPR_BADDEBT_PLAN_IDS[pid] || DEPR_BADDEBT_ITEM_IDS[it.id]) leaf.deprBadDebt = true;
+        (planfinBuckets[pid] = planfinBuckets[pid] || []).push(leaf);
       });
-    var rootRegOPD = makeGroup('REG_OPD','รายได้ OPD (ไม่รวมเหมาจ่าย)','revenue', opdPayerNodesReg);
-    var rootRegIPD = makeGroup('REG_IPD','รายได้ IPD','revenue', ipdPayerNodes);
-    var REG_OTHREV_IDS = ['OthRev::4313010199.105','OthRev::4302030101.101'];
-    var regOthRevLeaves = REG_OTHREV_IDS.filter(function(id){ return orById[id]; }).map(function(id){
-      var it = orById[id];
-      return makeLeaf(it.id, it.label, 'revenue', 'sub');
     });
-    var rootRegOthRev = makeGroup('REG_OTHREV','รายได้อื่นที่นับรวมด้วย','revenue', regOthRevLeaves);
-    var rootRegular = makeGroup('TOTAL_REGULAR','รวมรายได้ที่รับสม่ำเสมอ (ไม่รวมเหมาจ่าย)','revenue',
-      [rootRegOPD, rootRegIPD, rootRegOthRev],
-      'รายได้ OPD รวมกับ IPD ไม่รวม 9 รายการ (UC-OP ใน CUP (รวม), P&P (รวม), กองทุน UC (CF), UC-OP นอก CUP ในจังหวัด, กองทุน UC-บริการพื้นที่เฉพาะ, บุคคลที่มีปัญหาสถานะและสิทธิ OP ใน CUP (รวม), UC-OP นอกสังกัด สป., UC-OP นอก CUP ต่างจังหวัด, กองทุน UC (งบลงทุน)) และไม่รวมสิทธิไร้รัฐ/ไร้สัญชาติทั้งหมด — บวกกลับด้วยรายได้ค่าใบรับรองแพทย์ และรายได้จากการรับบริจาค-เงินสดฯ');
-    PANELS[7] = finalizePanel(7,'revenue',[rootRegular]);
-    PANELS[7].avgToggle = true;
-    var avgSegHtml7 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg7">' +
-      '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
-      '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
-      '</div></div>';
-    document.getElementById('panel7').innerHTML = buildPanelDom(7,
-      'รายได้ที่รับสม่ำเสมอ (ไม่รวมเหมาจ่าย)',
-      'รายได้ OPD + IPD ไม่รวมรายการเหมาจ่าย/กองทุนเฉพาะ 6 รายการ — กด "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน หรือดูยอดรวมที่การ์ดด้านบน',
-      avgSegHtml7);
-    document.getElementById('avgSeg7').addEventListener('click', function(e){
-      var b=e.target.closest('button'); if(!b) return;
-      STATE.avgView[7] = b.dataset.v;
-      Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
-      renderPanel(PANELS[7]);
+    function planfinGroupsFor(order, kind){
+      return order.filter(function(pid){ return planfinBuckets[pid] && planfinBuckets[pid].length; }).map(function(pid){
+        var leaves = planfinBuckets[pid];
+        return makeGroup('PLAN_'+pid, pid+' '+PLANFIN_META[pid], kind, leaves,
+          PLANFIN_META[pid] + ' (' + leaves.length + ' รายการ)');
+      });
+    }
+    // counts leaves at any depth — the revenue tree below nests 3 levels (Plan -> เดิม category ->
+    // merge-group/flat leaf), while the expense tree stays flat (Plan -> leaf), so a plain
+    // node.kids.length no longer means "leaf count" for both; this recurses either shape correctly.
+    function countLeaves(node){
+      if(!node.kids || !node.kids.length) return 1;
+      return node.kids.reduce(function(s,k){ return s+countLeaves(k); }, 0);
+    }
+
+    // ---- Tab2 (revenue) only, per user request 2026-09-28: nest each Plan_ID group by its ORIGINAL
+    // Quick Method category (OPD/IPD/OthRev/OthExp), and within OPD/IPD, reuse the exact same
+    // REV_MERGES "(รวม)" groups already built for the old OPD/IPD tabs — same group objects' ids/
+    // labels/members, just re-parented under Plan_ID>category instead of Plan_ID>payer type. Every
+    // REV_MERGES group's members share one Plan_ID (verified), so no group ever needs to be split
+    // across two Plan_ID branches. Items with no merge group stay flat leaves at the category level,
+    // same as the worked P04 example the user gave (PAYER_SUBGROUPS' CS/LGO split is NOT reused here
+    // since those 2 subgroups mix Plan_IDs internally and can't be kept intact under one Plan_ID).
+    // A merge group's members usually all share one original category too (e.g. all IPD) — but as of
+    // 2026-09-28 one group (IPD::4301020106.306) mixes in an OthRev member. buildPlanfinRevGroups()
+    // below collects merge-group leaves per-Plan_ID (not per Plan_ID+category like flat leaves), and
+    // always places the assembled group node under its ANCHOR's own origin category branch — so a
+    // cross-category member folds into that one row instead of spawning a second, duplicate-id node
+    // in its own category's branch.
+    var revMergeOfMember = {};
+    Object.keys(REV_MERGES).forEach(function(anchorId){
+      REV_MERGES[anchorId].members.forEach(function(mid){ revMergeOfMember[mid] = anchorId; });
+    });
+    var revMergeAnchorCat = {};
+    Object.keys(REV_MERGES).forEach(function(anchorId){ revMergeAnchorCat[anchorId] = anchorId.split('::')[0]; });
+    var PLANFIN_REV_CAT_ORDER = ['OPD','IPD','OthRev','OthExp'];
+    var PLANFIN_REV_CAT_LABEL = {OPD:'OPD', IPD:'IPD', OthRev:'รายได้อื่นๆ (OthRev)', OthExp:'รายการจาก OthExp ที่จัดเป็นรายได้ตามแผนงบ'};
+    // Per user request 2026-09-28: these 2 items are coded/stored under OthExp with the sign convention
+    // of an expense-reducing entry; shown here on the revenue side (P04), their sign is flipped to
+    // match the source Access report's own convention for this figure on the revenue side. Only these
+    // 2 specific leaf objects (built fresh below) carry signFlip — every other use of the same 2 ids
+    // elsewhere in the file (e.g. rootPayUC / Tab5) reads its own separate leaf object, untouched.
+    var PLANFIN_REV_SIGNFLIP_IDS = {'OthExp::4301020105.240':true, 'OthExp::4301020105.271':true};
+    // Per user request 2026-09-28: "ไม่นับรายได้เงินเดือนและเงินงบประมาณ" checkbox — whole P11 Plan_ID
+    // group, plus these 4 named items nested under P12 (P12's own group label happens to also read
+    // "รายได้อื่น", same as the Plan_ID's PLANFIN_META name — that's just P12's name, not another item).
+    // "รายได้จากการรับบริจาค-สินทรัพย์อื่น" was originally listed here too but was moved to the new
+    // "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน" checkbox below in the user's revised request.
+    var EXCLUDE_SALARY_BUDGET_PLAN_IDS = {P11:true};
+    var EXCLUDE_SALARY_BUDGET_ITEM_IDS = {
+      'OthRev::4307010108.101': true, // บัญชีรายได้ระหว่างหน่วยงาน - หน่วยงานรับเงินงบกลางจากรัฐบาล (P12)
+      'OthRev::4313010199.119': true, // รายได้อื่น-เงินงบประมาณงบดำเนินงานรับโอนจาก สสจ./รพศ./รพท./รพช./รพ.สต. (P12)
+      'OthRev::4313010199.122': true, // รายได้อื่น-เงินงบประมาณงบกลางรับโอนจาก สสจ./รพศ./รพท./รพช./รพ.สต. (P12)
+      'OthRev::4307010105.101': true  // บัญชีรายได้ระหว่างหน่วยงาน - หน่วยงานรับเงินงบดำเนินงานจากรัฐบาล (P12)
+    };
+    // Per user request 2026-09-28: "ไม่นับรายได้จาก ส่วนต่างค่ารักษาตามจ่าย UC OP" checkbox — the same 2
+    // P04 items that already carry signFlip on this tab (PLANFIN_REV_SIGNFLIP_IDS above), tracked here
+    // as a separate concern since the two checkboxes are independent toggles.
+    var EXCLUDE_UCOP_VARIANCE_ITEM_IDS = {'OthExp::4301020105.240':true, 'OthExp::4301020105.271':true};
+    // Per user request 2026-09-28: "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน" checkbox — revenue
+    // recognized as an in-kind/non-cash asset rather than actual money received.
+    var EXCLUDE_NONCASH_ASSET_ITEM_IDS = {
+      'OthRev::4302030101.102': true, // รายได้จากการรับบริจาค-สินทรัพย์อื่น (P12)
+      'OthRev::4301020102.106': true  // รายได้สนับสนุนยาและอื่น ๆ (P10)
+    };
+    function buildPlanfinRevGroups(){
+      var byPidCat = {}; // pid -> cat -> {flat:[leaf,...]}  (flat, non-merged leaves only)
+      var mergeLeavesByPid = {}; // pid -> anchorId -> [leaf,...] — collected across ALL categories under
+                                  // one Plan_ID, not per-category, so a cross-category member (see the
+                                  // 2026-09-28 IPD::4301020106.306 case above) still lands in the same
+                                  // bucket as its anchor instead of spawning a second node elsewhere.
+      PLANFIN_REV_CAT_ORDER.forEach(function(cat){
+        (DATA.subItems[cat]||[]).forEach(function(it){
+          var pid = PLANFIN_ID_TO_PLAN[it.id];
+          if(!pid || PLANFIN_REV_ORDER.indexOf(pid)===-1) return; // not a revenue-side id
+          byPidCat[pid] = byPidCat[pid] || {};
+          var bucket = byPidCat[pid][cat] = byPidCat[pid][cat] || {flat:[]};
+          // No fund (เงินบำรุง/ไม่ใช่เงินบำรุง) tagging on the revenue side any more, per user request —
+          // Tab3 (expense) keeps LC's native fund tag; planfinFundFor() is unchanged/still used there.
+          var leaf = makeLeaf(it.id, it.label, 'revenue', 'sub', undefined, PLANFIN_REV_SIGNFLIP_IDS[it.id]);
+          if(EXCLUDE_SALARY_BUDGET_PLAN_IDS[pid] || EXCLUDE_SALARY_BUDGET_ITEM_IDS[it.id]) leaf.salaryBudgetRev = true;
+          if(EXCLUDE_UCOP_VARIANCE_ITEM_IDS[it.id]) leaf.ucopVarianceRev = true;
+          if(EXCLUDE_NONCASH_ASSET_ITEM_IDS[it.id]) leaf.nonCashAssetRev = true;
+          var anchorId = revMergeOfMember[it.id];
+          if(anchorId){
+            mergeLeavesByPid[pid] = mergeLeavesByPid[pid] || {};
+            (mergeLeavesByPid[pid][anchorId] = mergeLeavesByPid[pid][anchorId] || []).push(leaf);
+          } else {
+            bucket.flat.push(leaf);
+          }
+        });
+      });
+      return PLANFIN_REV_ORDER.filter(function(pid){ return byPidCat[pid]; }).map(function(pid){
+        var catMap = byPidCat[pid];
+        var mergesForPid = mergeLeavesByPid[pid] || {};
+        var presentCats = PLANFIN_REV_CAT_ORDER.filter(function(cat){ return catMap[cat]; });
+        function catKids(cat){
+          var bucket = catMap[cat] || {flat:[]};
+          // Only build the merge-group node here when THIS category is the anchor's own home category
+          // — so a group with a cross-category member still surfaces as exactly one row, always under
+          // its anchor's branch, never duplicated into the member's own category branch too.
+          var mergeGroupNodes = Object.keys(mergesForPid).filter(function(anchorId){ return revMergeAnchorCat[anchorId]===cat; })
+            .map(function(anchorId){
+              return makeGroup(anchorId+'::GRP', REV_MERGES[anchorId].label, 'revenue', mergesForPid[anchorId]);
+            });
+          return mergeGroupNodes.concat(bucket.flat);
+        }
+        // Per user request 2026-09-28 ("P05 ไม่ต้องแบ่งหมวดย่อย"): a Plan_ID whose items come from a
+        // single original category needs no category wrapper — that level would only ever show one
+        // child, so it's collapsed and the merge-groups/flat leaves sit directly under the Plan_ID.
+        // A Plan_ID spanning 2+ categories (e.g. P04's OPD+IPD+OthExp) keeps the category level so
+        // those branches stay distinguishable.
+        var kidsForPlan = presentCats.length===1 ? catKids(presentCats[0]) : presentCats.map(function(cat){
+          var kids = catKids(cat);
+          var n = kids.reduce(function(s,k){ return s+countLeaves(k); }, 0);
+          return makeGroup('PLAN_'+pid+'_'+cat, PLANFIN_REV_CAT_LABEL[cat], 'revenue', kids, PLANFIN_REV_CAT_LABEL[cat]+' ('+n+' รายการ)');
+        });
+        var n = kidsForPlan.reduce(function(s,g){ return s+countLeaves(g); }, 0);
+        return makeGroup('PLAN_'+pid, pid+' '+PLANFIN_META[pid], 'revenue', kidsForPlan,
+          PLANFIN_META[pid] + ' (' + n + ' รายการ)');
+      });
+    }
+    var planfinRevGroups = buildPlanfinRevGroups();
+    var planfinExpGroups = planfinGroupsFor(PLANFIN_EXP_ORDER, 'expense');
+    var planfinRevCount = planfinRevGroups.reduce(function(s,g){ return s+countLeaves(g); }, 0);
+    var planfinExpCount = planfinExpGroups.reduce(function(s,g){ return s+countLeaves(g); }, 0);
+
+    var rootPlanRev = makeGroup('TOTAL_PLANREV','รวมรายได้ทั้งหมด (แผนงบ Planfin)','revenue', planfinRevGroups,
+      'รายได้ทั้งหมดจัดกลุ่มตามแผนงบประมาณ (Planfin) แทนหมวด Quick Method เดิม ('+planfinRevCount+' รายการ, '+planfinRevGroups.length+' แผนงบ)');
+    PANELS[2] = finalizePanel(2,'revenue',[rootPlanRev]);
+    // No fund (เงินบำรุง/ไม่ใช่เงินบำรุง) filter on the revenue side any more, per user request —
+    // PANELS[2].fundFilterable intentionally left unset/false.
+    // Three independent "ไม่นับ..." checkboxes, per user request 2026-09-28 (revised): default CHECKED
+    // (i.e. excluded) — the `checked` attribute below reads the matching STATE default so the DOM and
+    // STATE never disagree on load — ticking one off restores that set of revenue items to every total/
+    // chart/table/export on this tab (see nodeIncluded()/rowSpec filtering above).
+    var excludeSalaryBudgetHtml = '<div class="field"><label>รายได้เงินเดือน/งบประมาณ</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
+        '<input type="checkbox" id="excludeSalaryBudgetChk2"'+(STATE.excludeSalaryBudgetRev?' checked':'')+'> ไม่นับรายได้เงินเดือนและเงินงบประมาณ' +
+      '</label></div>';
+    var excludeUcopVarianceHtml = '<div class="field"><label>ส่วนต่าง UC OP</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
+        '<input type="checkbox" id="excludeUcopVarianceChk2"'+(STATE.excludeUcopVarianceRev?' checked':'')+'> ไม่นับส่วนต่างค่ารักษาตามจ่าย UC OP' +
+      '</label></div>';
+    var excludeNonCashAssetHtml = '<div class="field"><label>รายได้สินทรัพย์ (ไม่ใช่ตัวเงิน)</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
+        '<input type="checkbox" id="excludeNonCashAssetChk2"'+(STATE.excludeNonCashAssetRev?' checked':'')+'> ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน' +
+      '</label></div>';
+    document.getElementById('panel2').innerHTML = buildPanelDom(2,
+      'รายได้ (แผนงบ Planfin)', 'รายได้ทั้งหมด ('+planfinRevCount+' รายการ) จัดกลุ่มตามแผนงบประมาณของกองเศรษฐกิจสุขภาพ แทนหมวด OPD/IPD/OthRev เดิม',
+      excludeSalaryBudgetHtml + excludeUcopVarianceHtml + excludeNonCashAssetHtml);
+    document.getElementById('excludeSalaryBudgetChk2').addEventListener('change', function(){
+      STATE.excludeSalaryBudgetRev = this.checked;
+      buildCatSelect(PANELS[2]);
+      renderPanel(PANELS[2]);
+    });
+    document.getElementById('excludeUcopVarianceChk2').addEventListener('change', function(){
+      STATE.excludeUcopVarianceRev = this.checked;
+      buildCatSelect(PANELS[2]);
+      renderPanel(PANELS[2]);
+    });
+    document.getElementById('excludeNonCashAssetChk2').addEventListener('change', function(){
+      STATE.excludeNonCashAssetRev = this.checked;
+      buildCatSelect(PANELS[2]);
+      renderPanel(PANELS[2]);
     });
 
-    // Tab8 — recurring cash outlay actually paid from เงินบำรุง (self-funded) each month, per user
-    // request: Labor Cost items tagged fund='self' + all of Material Cost + the "ค่ารักษาตามจ่าย UC
-    // (ยอดจ่ายจริง)" composite. Reuses the exact same MC (rootMC, Tab5) and PayUC (rootPayUC, Tab6)
-    // tree nodes built above, so these totals always match those tabs exactly — nothing here is
-    // computed separately and no risk of drifting out of sync. Use the "เฉพาะเดือนที่เลือก" /
-    // "สะสมตั้งแต่ต้นปีงบ (YTD)" toggle above and the ช่วงเวลา dropdown to see any single month.
-    var lcSelfLeaves = (DATA.subItems.LC||[]).filter(function(it){ return it.fund==='self'; })
-      .map(function(it){ return makeLeaf(it.id, it.label, 'expense', 'sub', it.fund); });
-    var rootLCSelf = makeGroup('REC_LC_SELF','ต้นทุนแรงงาน (Labor Cost) — เฉพาะเงินบำรุง','expense', lcSelfLeaves);
-    var rootRecurring = makeGroup('TOTAL_RECURRING','รวมรายจ่ายประจำที่ต้องจ่ายจริง (เงินบำรุง)','expense',
-      [rootLCSelf, rootMC, rootPayUC],
-      'ต้นทุนแรงงาน (เฉพาะเงินบำรุง) + รายจ่าย Material Cost (ทั้งหมด) + ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง)');
-    PANELS[8] = finalizePanel(8,'expense',[rootRecurring]);
-    PANELS[8].avgToggle = true;
-    var avgSegHtml8 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg8">' +
-      '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
-      '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
+    var rootPlanExp = makeGroup('TOTAL_PLANEXP','รวมรายจ่ายทั้งหมด (แผนงบ Planfin)','expense', planfinExpGroups,
+      'รายจ่ายทั้งหมดจัดกลุ่มตามแผนงบประมาณ (Planfin) แทนหมวด Quick Method เดิม ('+planfinExpCount+' รายการ, '+planfinExpGroups.length+' แผนงบ)');
+    PANELS[3] = finalizePanel(3,'expense',[rootPlanExp]);
+    PANELS[3].fundFilterable = true;
+    PANELS[3].budgetFundLabel = 'เงินงบประมาณ';
+    var fundSegHtml3 = '<div class="field"><label>แหล่งเงิน</label><div class="seg" id="fundSeg3">' +
+      '<button data-v="all" aria-pressed="true">ทั้งหมด</button>' +
+      '<button data-v="self" aria-pressed="false">เงินบำรุง</button>' +
+      '<button data-v="budget" aria-pressed="false">เงินงบประมาณ</button>' +
       '</div></div>';
-    document.getElementById('panel8').innerHTML = buildPanelDom(8,
-      'สรุปรายจ่ายประจำที่ต้องจ่ายจริง (เงินบำรุง)',
-      'ต้นทุนแรงงานเฉพาะที่จ่ายจากเงินบำรุง ('+lcSelfLeaves.length+' รายการ) + รายจ่าย Material Cost ทั้งหมด + ค่ารักษาตามจ่าย UC (ยอดจ่ายจริง) — สลับ "เฉพาะเดือนที่เลือก" ที่ตัวกรองด้านบนเพื่อดูยอดรายเดือน หรือกด "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน',
-      avgSegHtml8);
-    document.getElementById('avgSeg8').addEventListener('click', function(e){
+    // "รวมค่าเสื่อม/หนี้สูญ" checkbox, per user request: unchecked hides P24 (ค่าเสื่อมราคาและค่าตัด
+    // จำหน่าย) + P241 (หนี้สูญและสงสัยจะสูญ), PLUS every "ค่าจำหน่าย..." (asset disposal/write-off) leaf
+    // nested elsewhere (e.g. under P25) — everywhere on this tab (table, chart, KPI totals, export)
+    // — see nodeIncluded()/rowSpec filtering above. Default UNCHECKED (excluded), per user request —
+    // the `checked` attribute below reads STATE.includeDeprBadDebt so the DOM and STATE never disagree
+    // on load.
+    var deprBadDebtHtml = '<div class="field"><label>ค่าเสื่อม/หนี้สูญ</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
+        '<input type="checkbox" id="deprBadDebtChk3"'+(STATE.includeDeprBadDebt?' checked':'')+'> รวม P24+P241+ค่าจำหน่าย' +
+      '</label></div>';
+    document.getElementById('panel3').innerHTML = buildPanelDom(3,
+      'รายจ่าย (แผนงบ Planfin)', 'รายจ่ายทั้งหมด ('+planfinExpCount+' รายการ) จัดกลุ่มตามแผนงบประมาณของกองเศรษฐกิจสุขภาพ แทนหมวด LC/MC/CC/OthExp เดิม (รวมรายการที่เคยซ่อนไว้ทั้งหมดแล้ว) — ใช้ตัวกรอง "แหล่งเงิน" เพื่อดูเฉพาะรายการต้นทุนแรงงานที่จ่ายจากเงินบำรุง/เงินงบประมาณ หรือเอาเครื่องหมายถูก "ค่าเสื่อม/หนี้สูญ" ออกเพื่อไม่รวม P24/P241/ค่าจำหน่าย ในยอดรวม',
+      fundSegHtml3 + deprBadDebtHtml);
+    document.getElementById('fundSeg3').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
-      STATE.avgView[8] = b.dataset.v;
+      STATE.lcFund = b.dataset.v;
       Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
-      renderPanel(PANELS[8]);
+      buildCatSelect(PANELS[3]);
+      renderPanel(PANELS[3]);
+    });
+    document.getElementById('deprBadDebtChk3').addEventListener('change', function(){
+      STATE.includeDeprBadDebt = this.checked;
+      buildCatSelect(PANELS[3]);
+      renderPanel(PANELS[3]);
     });
 
-    // Tab9 — "สรุปรายจ่ายค่าตอบแทน ฉ.11/ฉ.12", per user request: break down the existing ค่าตอบแทน
+    // Tab4 (new) — "ต้นทุนรายจ่าย(บริการ) ใช้ไป", per user request 2026-09-28: a custom regrouping of
+    // specific MC (Material Cost) leaf line items into a cost-of-goods-used view for direct patient-
+    // care service costs, independent of the Planfin Plan_ID structure (these 17 items span Plan_IDs
+    // P14/P15/P151/P16/P21/P23). Reads DATA.subItems.MC directly by exact id (never Tab3's Planfin
+    // tree nodes), so this tab cannot drift out of sync with — or accidentally mutate — Tab3.
+    var mcById4 = {}; (DATA.subItems.MC||[]).forEach(function(it){ mcById4[it.id] = it; });
+    function mcLeaf4(id){
+      var it = mcById4[id];
+      return it ? makeLeaf(it.id, it.label, 'expense', 'sub', it.fund) : null;
+    }
+    function mcLeaves4(ids){ return ids.map(mcLeaf4).filter(Boolean); }
+    var costUsedKids = [
+      mcLeaf4('MC::5104030205.101'), // ยาใช้ไป
+      mcLeaf4('MC::5104030205.103'), // วัสดุทางการแพทย์ทั่วไปใช้ไป
+      makeGroup('COSTUSED_LAB','วัสดุวิทยาศาสตร์การแพทย์ + ค่าตรวจ Lab','expense',
+        mcLeaves4(['MC::5104010112.114','MC::5104030205.104'])), // ค่าจ้างตรวจทางห้องปฏิบัติการ (Lab), วัสดุวิทยาศาสตร์และการแพทย์ใช้ไป
+      mcLeaf4('MC::5104030205.102'), // วัสดุเภสัชกรรมใช้ไป
+      mcLeaf4('MC::5104030205.117'), // วัสดุทันตกรรมใช้ไป
+      mcLeaf4('MC::5104030205.113'), // วัสดุเครื่องแต่งกายใช้ไป
+      makeGroup('COSTUSED_KITCHEN','งานบ้านงานครัว บริโภค จ้างประกอบอาหาร','expense',
+        mcLeaves4(['MC::5104010104.106','MC::5104030205.112','MC::5104010112.103'])), // วัสดุงานบ้านงานครัวใช้ไป, วัสดุบริโภคใช้ไป, ค่าจ้างเหมาประกอบอาหารผู้ป่วย
+      makeGroup('COSTUSED_OTHER','ต้นทุนบริการอื่น','expense',
+        mcLeaves4(['MC::5104010104.101','MC::5104010104.105','MC::5104010104.103','MC::5104010104.108','MC::5104010104.107','MC::5104010104.102','MC::5104010104.104']))
+        // วัสดุสำนักงานใช้ไป, วัสดุคอมพิวเตอร์ใช้ไป, วัสดุไฟฟ้าและวิทยุใช้ไป, วัสดุอื่นใช้ไป, วัสดุก่อสร้างใช้ไป, วัสดุยานพาหนะและขนส่งใช้ไป, วัสดุโฆษณาและเผยแพร่ใช้ไป
+    ].filter(Boolean);
+    var costUsedCount = costUsedKids.reduce(function(s,k){ return s+countLeaves(k); }, 0);
+    var rootCostUsed = makeGroup('TOTAL_COSTUSED','รวมต้นทุนรายจ่าย(บริการ) ใช้ไป','expense', costUsedKids,
+      'ต้นทุนวัสดุ/ค่าจ้างที่ใช้ในการให้บริการผู้ป่วยโดยตรง ('+costUsedCount+' รายการ)');
+    PANELS[4] = finalizePanel(4,'expense',[rootCostUsed]);
+    document.getElementById('panel4').innerHTML = buildPanelDom(4,
+      'ต้นทุนรายจ่าย(บริการ) ใช้ไป',
+      'ต้นทุนวัสดุ/ค่าจ้างที่ใช้ในการให้บริการผู้ป่วยโดยตรง ('+costUsedCount+' รายการ) จัดกลุ่มใหม่ตามหมวดต้นทุนบริการ (ยา/วัสดุการแพทย์+Lab/เภสัชกรรม/ทันตกรรม/เครื่องแต่งกาย/งานครัว/อื่นๆ) แทนหมวด MC เดิม');
+
+    // (Historical note: an earlier, unrelated pair of tabs once numbered Tab5/Tab6 — "รายได้ที่รับ
+    // สม่ำเสมอ" / "รายจ่ายประจำ" — was removed entirely per user request, well before the current
+    // Tab5 below existed. opdPayerNodes/ipdPayerNodes/orById/rootMC/rootPayUC stay defined above
+    // (built for other still-used purposes / kept as dead code from earlier restructures) but are
+    // no longer read here.)
+
+    // Tab5 (new) — "สรุปค่ารักษาตามจ่ายทุกสิทธิ", per user request 2026-09-28: a custom regrouping of
+    // OthExp (Other Expense) leaf items covering claim-settlement payments across all insurance rights.
+    // The "ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ." row is a COMPOSITE: it sums its own base item plus the
+    // 2 UC-OP variance items AS-IS (no signFlip) — confirmed with the user (2026-09-28: "เอาส่วนต่างที่
+    // ต่ำกว่า ไปบวก ถูกต้องแล้วครับ") and against the raw data (dashboard_data.json, full-region sample
+    // of 938 hospital/period rows): OthExp::5104030299.202 (base) is consistently POSITIVE (930/938),
+    // while OthExp::4301020105.240/.271 (the 2 variance items) are natively stored with a negative/
+    // expense-reducing sign (548/558 and 450/455 negative among their non-zero, non-missing rows
+    // respectively) — so a plain sum already yields base - |var1| - |var2|, exactly matching the
+    // user's stated formula "ยอดรวม = ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. - ส่วนต่าง...(1) - ส่วนต่าง...(2)".
+    // Reads DATA.subItems.OthExp directly by exact id (independent of Tab3's Planfin tree and Tab7's
+    // OthExp-derived MOE leaves), so this tab cannot drift out of sync with — or accidentally mutate —
+    // those tabs. No fund filter / avg-toggle / checkboxes requested for this tab — simplest pattern.
+    var otById5 = {}; (DATA.subItems.OthExp||[]).forEach(function(it){ otById5[it.id] = it; });
+    function otLeaf5(id){
+      var it = otById5[id];
+      return it ? makeLeaf(it.id, it.label, 'expense', 'sub', it.fund) : null;
+    }
+    var ucInspKids = [
+      otLeaf5('OthExp::5104030299.202'), // ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. (ฐาน)
+      otLeaf5('OthExp::4301020105.240'), // ส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงในการตามจ่าย UC OP
+      otLeaf5('OthExp::4301020105.271')  // ส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลงในการตามจ่าย UC OP (หน่วยบริการที่ตามจ่าย)
+    ].filter(Boolean);
+    var ucInspGroup = makeGroup('SUMUC_INSP','ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ.','expense', ucInspKids,
+      'ยอดรวม = ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ. − ส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลง 2 รายการ');
+    var claimUcKids = [
+      ucInspGroup,
+      otLeaf5('OthExp::5104030299.203'), // ค่ารักษาตามจ่าย UC นอกสังกัด สป. สธ.
+      otLeaf5('OthExp::5104030299.702'), // ค่ารักษาตามจ่ายบุคคลที่มีปัญหาสถานะและสิทธิ
+      otLeaf5('OthExp::5104030299.501')  // ค่ารักษาตามจ่ายคนต่างด้าวและแรงงานต่างด้าว
+    ].filter(Boolean);
+    var rootClaimUc = makeGroup('CLAIMPAY_UC','ค่ารักษาตามจ่ายสิทธิ UC','expense', claimUcKids);
+    var claimPayCount = countLeaves(rootClaimUc);
+    var rootClaimPay = makeGroup('TOTAL_CLAIMPAY','สรุปค่ารักษาตามจ่ายทุกสิทธิ','expense', [rootClaimUc],
+      'ค่ารักษาตามจ่ายแยกตามสิทธิการรักษา ('+claimPayCount+' รายการ)');
+    PANELS[5] = finalizePanel(5,'expense',[rootClaimPay]);
+    document.getElementById('panel5').innerHTML = buildPanelDom(5,
+      'สรุปค่ารักษาตามจ่ายทุกสิทธิ',
+      'ค่ารักษาตามจ่ายแยกตามสิทธิการรักษา ('+claimPayCount+' รายการ) — แถว "ค่ารักษาตามจ่าย UC ในสังกัด สป. สธ." เป็นยอดสุทธิหลังหักส่วนต่างค่ารักษาที่ต่ำกว่าข้อตกลง 2 รายการแล้ว');
+
+    // Tab6 — "สรุปรายจ่ายค่าตอบแทน ฉ.11/ฉ.12", per user request: break down the existing ค่าตอบแทน
     // ฉ.11/ฉ.12 LC subgroup (9 real leaf items) by fund source (เงินบำรุง vs เงินงบประมาณ), with a
-    // percentage split, a grand total, and the same "หารเฉลี่ยรายเดือน" option as Tab8.
+    // percentage split, a grand total, and the same "หารเฉลี่ยรายเดือน" option as Tab5.
     var CHOR1112_IDS = [
       'LC::5104040102.113','LC::5104040102.117','LC::5104040102.114','LC::5104040102.118',
       'LC::5104040102.111','LC::5104040102.115','LC::5104040102.116','LC::5104040102.112',
@@ -2111,38 +2714,38 @@
     });
     var rootChor1112 = makeGroup('TOTAL_CHOR1112','รวมค่าตอบแทน ฉ.11/ฉ.12','expense', chor1112Leaves,
       'ค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ/ตามผลการปฏิบัติงาน ตามระเบียบ ฉ.11/ฉ.12 ('+chor1112Leaves.length+' รายการ) แยกตามแหล่งเงิน');
-    PANELS[9] = finalizePanel(9,'expense',[rootChor1112]);
-    PANELS[9].fundFilterable = true;
-    PANELS[9].avgToggle = true;
-    PANELS[9].fundBreakdown = true;
-    var fundSegHtml9 = '<div class="field"><label>แหล่งเงิน</label><div class="seg" id="fundSeg9">' +
+    PANELS[6] = finalizePanel(6,'expense',[rootChor1112]);
+    PANELS[6].fundFilterable = true;
+    PANELS[6].avgToggle = true;
+    PANELS[6].fundBreakdown = true;
+    var fundSegHtml10 = '<div class="field"><label>แหล่งเงิน</label><div class="seg" id="fundSeg6">' +
       '<button data-v="all" aria-pressed="true">ทั้งหมด</button>' +
       '<button data-v="self" aria-pressed="false">เงินบำรุง</button>' +
       '<button data-v="budget" aria-pressed="false">เงินงบประมาณ</button>' +
       '</div></div>';
-    var avgSegHtml9 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg9">' +
+    var avgSegHtml10 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg6">' +
       '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
       '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
       '</div></div>';
-    document.getElementById('panel9').innerHTML = buildPanelDom(9,
+    document.getElementById('panel6').innerHTML = buildPanelDom(6,
       'สรุปรายจ่ายค่าตอบแทน ฉ.11/ฉ.12',
       'ค่าตอบแทน ฉ.11/ฉ.12 ('+chor1112Leaves.length+' รายการ) แบ่งเป็นจ่ายจากเงินบำรุง/เงินงบประมาณ พร้อมสัดส่วน % และยอดรวม — ใช้ตัวกรอง "แหล่งเงิน" เพื่อดูเฉพาะกลุ่ม หรือ "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน',
-      fundSegHtml9 + avgSegHtml9);
-    document.getElementById('fundSeg9').addEventListener('click', function(e){
+      fundSegHtml10 + avgSegHtml10);
+    document.getElementById('fundSeg6').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
       STATE.lcFund = b.dataset.v;
       Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
-      buildCatSelect(PANELS[9]);
-      renderPanel(PANELS[9]);
+      buildCatSelect(PANELS[6]);
+      renderPanel(PANELS[6]);
     });
-    document.getElementById('avgSeg9').addEventListener('click', function(e){
+    document.getElementById('avgSeg6').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
-      STATE.avgView[9] = b.dataset.v;
+      STATE.avgView[6] = b.dataset.v;
       Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
-      renderPanel(PANELS[9]);
+      renderPanel(PANELS[6]);
     });
 
-    // Tab10 — "MOE (กองเศรษฐ)": a fixed, explicit list of Labor Cost / Material Cost / Other-Expense
+    // Tab7 — "MOE (กองเศรษฐ)": a fixed, explicit list of Labor Cost / Material Cost / Other-Expense
     // real Quick Method line items that กองเศรษฐกิจสุขภาพ treats as the minimum operating expenditure
     // (ค่าใช้จ่ายขั้นต่ำที่จำเป็น) a hospital must cover every month, per user-supplied list. Reads the
     // same raw DATA.subItems.LC/MC/OthExp arrays Tab4/5/6 build from (never Tab4/5/6's own tree nodes),
@@ -2193,83 +2796,45 @@
     var moeCount = moeLC.length + moeMC.length + moeOT.length;
     var rootMOE = makeGroup('TOTAL_MOE','MOE (กองเศรษฐ) — ค่าใช้จ่ายขั้นต่ำที่จำเป็น','expense', moeKids,
       'รายการย่อยตามที่กองเศรษฐกิจสุขภาพกำหนด ('+moeCount+' รายการ)');
-    PANELS[10] = finalizePanel(10,'expense',[rootMOE]);
-    PANELS[10].avgToggle = true;
+    PANELS[7] = finalizePanel(7,'expense',[rootMOE]);
+    PANELS[7].avgToggle = true;
     // Feeds renderMoeSummary()'s per-hospital mean/SD/annual summary table (a separate card from the
     // raw item table below it), per explicit user request. Real leaf ids only (moeLC/moeMC/moeOT are
     // already filtered to ids actually present in this region's data).
-    PANELS[10].moeIds = moeLC.concat(moeMC, moeOT).map(function(n){ return n.id; });
-    var avgSegHtml10 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg10">' +
+    PANELS[7].moeIds = moeLC.concat(moeMC, moeOT).map(function(n){ return n.id; });
+    var avgSegHtml11 = '<div class="field"><label>มุมมองยอด</label><div class="seg" id="avgSeg7">' +
       '<button data-v="normal" aria-pressed="true">ตามตัวกรองด้านบน</button>' +
       '<button data-v="avg" aria-pressed="false">หารเฉลี่ยรายเดือน</button>' +
       '</div></div>';
     var moeSummaryMidHtml =
-      '<div class="card" id="moeSummaryCard10">' +
-        '<div class="card-head"><div><h2>ตารางสรุป MOE รายปี (ประมาณการ)</h2><p id="moeSummarySub10"></p></div></div>' +
-        '<div class="tablewrap"><table id="moeSummaryTable10"></table></div>' +
+      '<div class="card" id="moeSummaryCard7">' +
+        '<div class="card-head"><div><h2>ตารางสรุป MOE รายปี (ประมาณการ)</h2><p id="moeSummarySub7"></p></div></div>' +
+        '<div class="tablewrap"><table id="moeSummaryTable7"></table></div>' +
       '</div>';
-    document.getElementById('panel10').innerHTML = buildPanelDom(10,
+    document.getElementById('panel7').innerHTML = buildPanelDom(7,
       'MOE (กองเศรษฐ) — ค่าใช้จ่ายขั้นต่ำที่จำเป็น',
       'รวมค่าตอบแทน/ค่าจ้างบุคลากร + ค่าวัสดุ/ค่าใช้สอย/สาธารณูปโภค + ค่าใช้จ่ายตามโครงการ ('+moeCount+' รายการ ตามที่กองเศรษฐกิจสุขภาพกำหนด) — กด "หารเฉลี่ยรายเดือน" เพื่อดูยอดเฉลี่ยต่อเดือน',
-      avgSegHtml10, moeSummaryMidHtml);
-    document.getElementById('avgSeg10').addEventListener('click', function(e){
+      avgSegHtml11, moeSummaryMidHtml);
+    document.getElementById('avgSeg7').addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
-      STATE.avgView[10] = b.dataset.v;
+      STATE.avgView[7] = b.dataset.v;
       Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){x.setAttribute('aria-pressed',x===b);});
-      renderPanel(PANELS[10]);
+      renderPanel(PANELS[7]);
     });
 
-    [1,2,3,4,5,6,7,8,9,10].forEach(function(t){ initPanel(PANELS[t]); });
+    [1,2,3,4,5,6,7].forEach(function(t){ initPanel(PANELS[t]); });
 
-    // Tab11 — "เปรียบเทียบรายปี": unlike tabs 1-10 (which always read the single currently-selected
-    // fiscal year via the global DATA/PANELS[1..10]), this tab always reads BOTH fiscal years directly
-    // from YEARS_DATA, independent of the "ปีงบประมาณ" selector above — so it's rebuilt here (inside
-    // buildTabPanels, which reruns on every year switch) but its own render logic (renderYearCompare,
-    // defined below) never looks at STATE.year. PANELS[11] is a minimal stand-in object (not a real
-    // tree panel — no roots/kind/nodesById) that exists purely so the shared export/print click
-    // handler (which looks up PANELS[tabId]) and exportTableCsv/exportChartCsv (which only touch
-    // panel.tabId + the panel._chartRows/_chartCols/_chartLabel stashed by renderYearCompare) work
-    // for this tab exactly like they do for tabs 1-10, with zero special-casing there.
-    PANELS[11] = {tabId:11};
-    // Second chart card — the FOCUSED hospital's own year-over-year comparison (per-category), shown
-    // beneath the cohort-level chart/table. Uses the existing global "โฟกัส รพ." field (STATE.focus) so
-    // a director can type/pick their own hospital once and see it on every tab, this one included,
-    // rather than adding a second, redundant hospital picker just for this card.
-    var hospCompareMidHtml =
-      '<div class="card" id="hospCompareCard11">' +
-        '<div class="card-head">' +
-          '<div><h2 id="hospCompareTitle11">เปรียบเทียบรายปีของโรงพยาบาลที่โฟกัส</h2><p id="hospCompareSub11"></p></div>' +
-          '<div class="field"><label>ส่งออก</label><div class="export-btns">' +
-            '<button type="button" class="export-btn" id="hospCompareExportPdf" title="พิมพ์/บันทึกกราฟและตารางนี้เป็น PDF">⬇ PDF</button>' +
-          '</div></div>' +
-        '</div>' +
-        '<div class="chartwrap"><svg id="hospCompareSvg11"></svg></div>' +
-        '<div class="tablewrap"><table id="hospCompareTable11"></table></div>' +
-        '<div class="legend" id="hospCompareLegend11">' +
-          '<span><i class="swatch" style="background:var(--series3)"></i>ปีงบ 2568</span>' +
-          '<span><i class="swatch" style="background:var(--rev)"></i>ปีงบ 2569</span>' +
-        '</div>' +
-      '</div>';
-    document.getElementById('panel11').innerHTML = buildPanelDom(11,
-      'เปรียบเทียบรายปีงบประมาณ (2568 เทียบ 2569)',
-      '',
-      '', hospCompareMidHtml, true);
-    document.getElementById('legend11').innerHTML =
-      '<span><i class="swatch" style="background:var(--series3)"></i>ปีงบ 2568</span>' +
-      '<span><i class="swatch" style="background:var(--rev)"></i>ปีงบ 2569</span>';
-    document.getElementById('hospCompareExportPdf').addEventListener('click', function(){ printCard('hospCompareCard11'); });
   }
 
   function switchTab(id){
     STATE.tab = id;
     document.querySelectorAll('.tab').forEach(function(b){ b.setAttribute('aria-selected', String(parseInt(b.dataset.tab,10)===id)); });
-    for(var i=1;i<=11;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
+    for(var i=1;i<=7;i++){ document.getElementById('panel'+i).hidden = (i!==id); }
     renderActiveTab();
   }
 
   function renderActiveTab(){
     syncFocusInput();
-    if(STATE.tab===11){ renderYearCompare(); return; }
     renderPanel(PANELS[STATE.tab]);
   }
 
@@ -2279,11 +2844,11 @@
 
     document.getElementById('footNote').innerHTML =
       '<b>ที่มาข้อมูล</b> — ระบบ Quick Method กองเศรษฐกิจสุขภาพ (ไฟล์ '+DATA.meta.source.split(' - ')[1]+') กรองเฉพาะ '+DATA.meta.region+' | ' +
-      '<b>หมวด Quick Method</b>: OPD/IPD/OthRev (รายรับ) และ LC/MC/CC/OthExp (รายจ่าย) จับคู่บัญชีตามตาราง MapQM ของกองเศรษฐกิจสุขภาพ — รายการย่อยในแท็บ 2/3/4/5/6 เป็นรายการจริงระดับเดียวกับตาราง MapQM (Account1) ไม่ใช่การจัดกลุ่มบัญชีอย่างกว้าง | ' +
+      '<b>หมวด Quick Method</b>: OPD/IPD/OthRev (รายรับ) และ LC/MC/CC/OthExp (รายจ่าย) จับคู่บัญชีตามตาราง MapQM ของกองเศรษฐกิจสุขภาพ — รายการย่อยในแท็บ 2/3 (จัดกลุ่มตามแผนงบ Planfin) เป็นรายการจริงระดับเดียวกับตาราง MapQM (Account1) ไม่ใช่การจัดกลุ่มบัญชีอย่างกว้าง | ' +
       '<b>สิทธิการรักษา</b> (แท็บ OPD/IPD): UC / ประกันสังคม / ข้าราชการ / ต่างด้าว / ไร้รัฐ / อื่นๆ | ' +
       '<b>ยอดสะสม (YTD)</b> คำนวณจากยอดยกไป (EndCr/EndDr) และ <b>ยอดรายเดือน</b> จากยอดเดินบัญชี (Dr/Cr) ของแต่ละเดือน | ' +
       '<b>ตัวกรอง</b>: เลือกจังหวัด/ขนาด (A–F3)/กลุ่มระดับบริการร่วมกันได้ในโหมด "ตามตัวกรอง" หรือสลับเป็น "เลือก รพ. เอง" เพื่อระบุรายแห่ง • "โฟกัส รพ." ปักหมุดโรงพยาบาลไว้คอลัมน์ซ้ายสุดของตารางแม้อยู่นอกกลุ่มที่กรองไว้ | ' +
-      '<b>ปีงบประมาณ</b>: สลับดูข้อมูลรายปีได้ที่ตัวกรองด้านบน (2568/2569) — แท็บ "เปรียบเทียบรายปี" แสดงทั้งสองปีพร้อมกันเสมอไม่ขึ้นกับตัวเลือกนี้ | ' +
+      '<b>ปีงบประมาณ</b>: สลับดูข้อมูลรายปีได้ที่ตัวกรองด้านบน (2568/2569) | ' +
       '<b>ประชากร UC</b> อ้างอิง ปชก.UC ณ 1 เม.ย. 2568 จากไฟล์กลุ่มบริการ | ' +
       '<b>กลุ่ม F2 ปรับใหม่</b>: แบ่งจากเดิม "F2 P≤30,000" เป็น <b>F2 P&lt;15,000</b> และ <b>F2 P15,000–30,000</b> ตามประชากร UC จริง (กลุ่ม F2 P30,000–60,000 เดิมไม่เปลี่ยนแปลง) | ' +
       'จัดทำ ' + DATA.meta.generated +
@@ -2341,9 +2906,9 @@
 
   // Load strategy: fetch ONLY the currently-selected year first and get the app up and usable on
   // that alone (this is the ~10MB single fetch that always worked pre-multi-year), then fetch the
-  // other year in the background for Tab11 / the per-line-item "other year" column. If the
-  // background fetch fails even after retries, tabs 1-10 and Tab11 both degrade gracefully instead
-  // of taking down the whole page (Tab11 already shows "กำลังโหลดข้อมูลปีเปรียบเทียบ…" until both
+  // other year in the background for Tab8 / the per-line-item "other year" column. If the
+  // background fetch fails even after retries, tabs 1-10 and Tab8 both degrade gracefully instead
+  // of taking down the whole page (Tab8 already shows "กำลังโหลดข้อมูลปีเปรียบเทียบ…" until both
   // years are present; valForOtherYear already returns null — blank cell — when a year isn't loaded).
   var primaryYear = STATE.year;
   var secondaryYear = FY_YEARS.filter(function(y){ return y!==primaryYear; })[0];
@@ -2360,11 +2925,11 @@
       YEAR_LOAD_STATE[secondaryYear] = 'loading';
       loadYearData(secondaryYear).then(function(j2){
         ingestYearData(secondaryYear, j2);
-        // Light up Tab11 / the "other year" column if they're already on screen waiting for this.
+        // Light up the "other year" column if it's already on screen waiting for this.
         renderActiveTab();
       }).catch(function(err){
         YEAR_LOAD_STATE[secondaryYear] = 'error';
-        showToast('โหลดข้อมูลปีงบ '+secondaryYear+' สำหรับเปรียบเทียบไม่สำเร็จ — แถบ "เปรียบเทียบรายปี" และคอลัมน์เทียบปีก่อนหน้าจะใช้งานไม่ได้ชั่วคราว ลองรีเฟรชหน้าเว็บอีกครั้ง');
+        showToast('โหลดข้อมูลปีงบ '+secondaryYear+' สำหรับเปรียบเทียบไม่สำเร็จ — คอลัมน์เทียบปีก่อนหน้าจะใช้งานไม่ได้ชั่วคราว ลองรีเฟรชหน้าเว็บอีกครั้ง');
       });
     }
   }).catch(function(err){
