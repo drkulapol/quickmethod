@@ -299,6 +299,8 @@
     excludeSalaryBudgetRev: true, // Tab2 (รายได้) only — "ไม่นับรายได้เงินเดือนและเงินงบประมาณ" checkbox; default ON, hides P11 + 4 named P12 items
     excludeUcopVarianceRev: true, // Tab2 (รายได้) only — "ไม่นับรายได้จาก ส่วนต่างค่ารักษาตามจ่าย UC OP" checkbox; default ON, hides the 2 named P04 items
     excludeNonCashAssetRev: true, // Tab2 (รายได้) only — "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน" checkbox; default ON, hides the 2 named OthRev items (P10/P12)
+    excludeUcCapexRev: true,      // Tab2 (รายได้) only — "ไม่รวมรายได้กองทุน UC (งบลงทุน)" checkbox; default ON, hides the 1 named OPD item (P04)
+    excludeInterFacilityTransferRev: true, // Tab2 (รายได้) only — "ไม่นับรวมการโอนเงินต่างสถานบริการจากหน่วยงานอื่น" checkbox; default ON, hides the 1 named OthRev item (P12)
     avgView: {},                  // tabId -> "avg" — per-tab "หารเฉลี่ยรายเดือน" toggle (panel.avgToggle tabs only)
     period: null,
     metric: "ytd", basis: "raw",
@@ -553,6 +555,14 @@
     // 2 named items (node.nonCashAssetRev) — รายได้จากการรับบริจาค-สินทรัพย์อื่น (P12) and รายได้สนับสนุน
     // ยาและอื่น ๆ (P10) — from every total/chart/table/export on this tab.
     if(panel.tabId===2 && STATE.excludeNonCashAssetRev && node.nonCashAssetRev) return false;
+    // Tab2 "ไม่รวมรายได้กองทุน UC (งบลงทุน)" checkbox, per user request 2026-09-29: when on (default),
+    // drop the 1 named P13 item (node.ucCapexRev) — รายได้กองทุน UC (งบลงทุน), OPD::4301020105.211 —
+    // from every total/chart/table/export on this tab.
+    if(panel.tabId===2 && STATE.excludeUcCapexRev && node.ucCapexRev) return false;
+    // Tab2 "ไม่นับรวมการโอนเงินต่างสถานบริการจากหน่วยงานอื่น" checkbox, per user request 2026-09-29: when
+    // on (default), drop the 1 named P12 item (node.interFacilityTransferRev) — รายได้อื่น-เงินนอก
+    // งบประมาณรับโอนจาก สสจ./รพศ./รพท./รพช./รพ.สต., OthRev::4313010199.117.
+    if(panel.tabId===2 && STATE.excludeInterFacilityTransferRev && node.interFacilityTransferRev) return false;
     if(!panel.fundFilterable || STATE.lcFund==='all') return true;
     if(!node.fund) return true; // group nodes carry no fund tag themselves — only their leaves do
     return node.fund===STATE.lcFund;
@@ -1217,16 +1227,18 @@
       });
     }
 
-    // Tab2's three "ไม่นับ..." checkboxes, per user request: when on, hide the corresponding group-
-    // header/leaf rows (nodeIncluded() above already drops the same branches from every total/chart/
-    // export — this keeps the table in sync).
-    if(panel.tabId===2 && (STATE.excludeSalaryBudgetRev || STATE.excludeUcopVarianceRev || STATE.excludeNonCashAssetRev)){
+    // Tab2's five "ไม่นับ.../ไม่รวม..." checkboxes, per user request: when on, hide the corresponding
+    // group-header/leaf rows (nodeIncluded() above already drops the same branches from every total/
+    // chart/export — this keeps the table in sync).
+    if(panel.tabId===2 && (STATE.excludeSalaryBudgetRev || STATE.excludeUcopVarianceRev || STATE.excludeNonCashAssetRev || STATE.excludeUcCapexRev || STATE.excludeInterFacilityTransferRev)){
       rowSpec = rowSpec.filter(function(r){
         if(STATE.excludeSalaryBudgetRev && r.id==='PLAN_P11') return false;
         var n = panel.nodesById[r.id];
         if(STATE.excludeSalaryBudgetRev && n && n.salaryBudgetRev) return false;
         if(STATE.excludeUcopVarianceRev && n && n.ucopVarianceRev) return false;
         if(STATE.excludeNonCashAssetRev && n && n.nonCashAssetRev) return false;
+        if(STATE.excludeUcCapexRev && n && n.ucCapexRev) return false;
+        if(STATE.excludeInterFacilityTransferRev && n && n.interFacilityTransferRev) return false;
         return true;
       });
     }
@@ -2614,12 +2626,20 @@
     // P04 items that already carry signFlip on this tab (PLANFIN_REV_SIGNFLIP_IDS above), tracked here
     // as a separate concern since the two checkboxes are independent toggles.
     var EXCLUDE_UCOP_VARIANCE_ITEM_IDS = {'OthExp::4301020105.240':true, 'OthExp::4301020105.271':true};
-    // Per user request 2026-09-28: "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน" checkbox — revenue
-    // recognized as an in-kind/non-cash asset rather than actual money received.
+    // Per user request 2026-09-28 (extended 2026-09-29 with a 3rd item — รายได้อื่น-ครุภัณฑ์ ที่ดินและ
+    // สิ่งก่อสร้างรับโอนจาก สสจ./รพศ./รพท./รพช./รพ.สต., P12): "ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่
+    // ตัวเงิน" checkbox — revenue recognized as an in-kind/non-cash asset rather than actual money received.
     var EXCLUDE_NONCASH_ASSET_ITEM_IDS = {
       'OthRev::4302030101.102': true, // รายได้จากการรับบริจาค-สินทรัพย์อื่น (P12)
-      'OthRev::4301020102.106': true  // รายได้สนับสนุนยาและอื่น ๆ (P10)
+      'OthRev::4301020102.106': true, // รายได้สนับสนุนยาและอื่น ๆ (P10)
+      'OthRev::4313010199.116': true  // รายได้อื่น-ครุภัณฑ์ ที่ดินและสิ่งก่อสร้างรับโอนจาก สสจ./รพศ./รพท./รพช./ รพ.สต. (P12)
     };
+    // Per user request 2026-09-29: "ไม่รวมรายได้กองทุน UC (งบลงทุน)" checkbox — the 1 named P13 item
+    // (capital-investment revenue from the UC fund), excluded from Tab2's revenue total by default.
+    var EXCLUDE_UC_CAPEX_ITEM_IDS = {'OPD::4301020105.211': true};
+    // Per user request 2026-09-29: "ไม่นับรวมการโอนเงินต่างสถานบริการจากหน่วยงานอื่น" checkbox — the 1
+    // named P12 item (an off-budget inter-facility fund transfer, not the hospital's own earned revenue).
+    var EXCLUDE_INTERFACILITY_TRANSFER_ITEM_IDS = {'OthRev::4313010199.117': true}; // รายได้อื่น-เงินนอกงบประมาณรับโอนจาก สสจ./รพศ./รพท./รพช./รพ.สต. (P12)
     function buildPlanfinRevGroups(){
       var byPidCat = {}; // pid -> cat -> {flat:[leaf,...]}  (flat, non-merged leaves only)
       var mergeLeavesByPid = {}; // pid -> anchorId -> [leaf,...] — collected across ALL categories under
@@ -2638,6 +2658,8 @@
           if(EXCLUDE_SALARY_BUDGET_PLAN_IDS[pid] || EXCLUDE_SALARY_BUDGET_ITEM_IDS[it.id]) leaf.salaryBudgetRev = true;
           if(EXCLUDE_UCOP_VARIANCE_ITEM_IDS[it.id]) leaf.ucopVarianceRev = true;
           if(EXCLUDE_NONCASH_ASSET_ITEM_IDS[it.id]) leaf.nonCashAssetRev = true;
+          if(EXCLUDE_UC_CAPEX_ITEM_IDS[it.id]) leaf.ucCapexRev = true;
+          if(EXCLUDE_INTERFACILITY_TRANSFER_ITEM_IDS[it.id]) leaf.interFacilityTransferRev = true;
           var anchorId = revMergeOfMember[it.id];
           if(anchorId){
             mergeLeavesByPid[pid] = mergeLeavesByPid[pid] || {};
@@ -2703,9 +2725,21 @@
       '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
         '<input type="checkbox" id="excludeNonCashAssetChk2"'+(STATE.excludeNonCashAssetRev?' checked':'')+'> ไม่นับรายได้ที่ได้มาเป็นสินทรัพย์ ไม่ใช่ตัวเงิน' +
       '</label></div>';
+    // Per user request 2026-09-29: "ไม่รวมรายได้กองทุน UC (งบลงทุน)" checkbox — default CHECKED
+    // (excluded), same on/off convention as the 3 checkboxes above.
+    var excludeUcCapexHtml = '<div class="field"><label>รายได้กองทุน UC (งบลงทุน)</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
+        '<input type="checkbox" id="excludeUcCapexChk2"'+(STATE.excludeUcCapexRev?' checked':'')+'> ไม่รวมรายได้กองทุน UC (งบลงทุน)' +
+      '</label></div>';
+    // Per user request 2026-09-29: "ไม่นับรวมการโอนเงินต่างสถานบริการจากหน่วยงานอื่น" checkbox — default
+    // CHECKED (excluded), same on/off convention as the 4 checkboxes above.
+    var excludeInterFacilityTransferHtml = '<div class="field"><label>โอนเงินต่างสถานบริการ</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;height:34px;white-space:nowrap;">' +
+        '<input type="checkbox" id="excludeInterFacilityTransferChk2"'+(STATE.excludeInterFacilityTransferRev?' checked':'')+'> ไม่นับรวมการโอนเงินต่างสถานบริการจากหน่วยงานอื่น' +
+      '</label></div>';
     document.getElementById('panel2').innerHTML = buildPanelDom(2,
       'รายได้ (แผนงบ Planfin)', 'รายได้ทั้งหมด ('+planfinRevCount+' รายการ) จัดกลุ่มตามแผนงบประมาณของกองเศรษฐกิจสุขภาพ แทนหมวด OPD/IPD/OthRev เดิม',
-      excludeSalaryBudgetHtml + excludeUcopVarianceHtml + excludeNonCashAssetHtml);
+      excludeSalaryBudgetHtml + excludeUcopVarianceHtml + excludeNonCashAssetHtml + excludeUcCapexHtml + excludeInterFacilityTransferHtml);
     document.getElementById('excludeSalaryBudgetChk2').addEventListener('change', function(){
       STATE.excludeSalaryBudgetRev = this.checked;
       buildCatSelect(PANELS[2]);
@@ -2718,6 +2752,16 @@
     });
     document.getElementById('excludeNonCashAssetChk2').addEventListener('change', function(){
       STATE.excludeNonCashAssetRev = this.checked;
+      buildCatSelect(PANELS[2]);
+      renderPanel(PANELS[2]);
+    });
+    document.getElementById('excludeUcCapexChk2').addEventListener('change', function(){
+      STATE.excludeUcCapexRev = this.checked;
+      buildCatSelect(PANELS[2]);
+      renderPanel(PANELS[2]);
+    });
+    document.getElementById('excludeInterFacilityTransferChk2').addEventListener('change', function(){
+      STATE.excludeInterFacilityTransferRev = this.checked;
       buildCatSelect(PANELS[2]);
       renderPanel(PANELS[2]);
     });
