@@ -1241,8 +1241,12 @@
     // rendered): (1) the line item is 0 for every hospital currently shown — no comparative info; or
     // (2) the group median is 0 AND the pinned "โฟกัส รพ." hospital's own value is also 0 — irrelevant
     // to both the group-level comparison and the one hospital being drilled into, even if some other,
-    // unfocused hospital in the table happens to be nonzero.
+    // unfocused hospital in the table happens to be nonzero. A node tagged node.alwaysShow (per user
+    // request 2026-09-29 — see mcLeaf4()/COSTUSED_KITCHEN above) skips both checks and always renders
+    // as its own sub-line, even when 0 for the current view, so it never looks like it silently vanished.
     }).filter(function(rc){
+      var n = panel.nodesById[rc.r.id];
+      if(n && n.alwaysShow) return true;
       if(rc.vals.every(isZeroish)) return false;
       if(STATE.focus && isZeroish(rc.med) && isZeroish(rc.focusVal)) return false;
       return true;
@@ -2785,11 +2789,19 @@
     // each call builds a completely FRESH tree of node objects (same 17 items, same shape), so the 3
     // panels' independent indexNodes()/flattenTree() results never share or mutate a node object.
     var mcById4 = {}; (DATA.subItems.MC||[]).forEach(function(it){ mcById4[it.id] = it; });
-    function mcLeaf4(id){
+    // alwaysShow: per user request 2026-09-29 — the row-hide rule below (see renderPanelTable's
+    // rowsComputed filter) was making "ค่าจ้างเหมาประกอบอาหารผู้ป่วย" disappear entirely from Tab4/5/6
+    // whenever it's 0 for both the focused hospital AND its comparison-group median — even though it's
+    // genuinely nonzero for ~45/103 hospitals region-wide, so it's a real line item the user wants
+    // pinned visible (as its own sub-line) rather than silently hidden when it happens to read 0.
+    function mcLeaf4(id, alwaysShow){
       var it = mcById4[id];
-      return it ? makeLeaf(it.id, it.label, 'expense', 'sub', it.fund) : null;
+      if(!it) return null;
+      var leaf = makeLeaf(it.id, it.label, 'expense', 'sub', it.fund);
+      if(alwaysShow) leaf.alwaysShow = true;
+      return leaf;
     }
-    function mcLeaves4(ids){ return ids.map(mcLeaf4).filter(Boolean); }
+    function mcLeaves4(ids){ return ids.map(function(id){ return mcLeaf4(id); }).filter(Boolean); }
     function buildCostUsedKids(){
       return [
         mcLeaf4('MC::5104030205.101'), // ยาใช้ไป
@@ -2800,7 +2812,8 @@
         mcLeaf4('MC::5104030205.117'), // วัสดุทันตกรรมใช้ไป
         mcLeaf4('MC::5104030205.113'), // วัสดุเครื่องแต่งกายใช้ไป
         makeGroup('COSTUSED_KITCHEN','งานบ้านงานครัว บริโภค จ้างประกอบอาหาร','expense',
-          mcLeaves4(['MC::5104010104.106','MC::5104030205.112','MC::5104010112.103'])), // วัสดุงานบ้านงานครัวใช้ไป, วัสดุบริโภคใช้ไป, ค่าจ้างเหมาประกอบอาหารผู้ป่วย
+          [mcLeaf4('MC::5104010104.106'), mcLeaf4('MC::5104030205.112'), mcLeaf4('MC::5104010112.103', true)].filter(Boolean)),
+          // วัสดุงานบ้านงานครัวใช้ไป, วัสดุบริโภคใช้ไป, ค่าจ้างเหมาประกอบอาหารผู้ป่วย (alwaysShow — see note above)
         makeGroup('COSTUSED_OTHER','ต้นทุนบริการอื่น','expense',
           mcLeaves4(['MC::5104010104.101','MC::5104010104.105','MC::5104010104.103','MC::5104010104.108','MC::5104010104.107','MC::5104010104.102','MC::5104010104.104']))
           // วัสดุสำนักงานใช้ไป, วัสดุคอมพิวเตอร์ใช้ไป, วัสดุไฟฟ้าและวิทยุใช้ไป, วัสดุอื่นใช้ไป, วัสดุก่อสร้างใช้ไป, วัสดุยานพาหนะและขนส่งใช้ไป, วัสดุโฆษณาและเผยแพร่ใช้ไป
